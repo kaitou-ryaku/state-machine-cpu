@@ -1,0 +1,31 @@
+`define MEMSIZE 16
+`define REGSIZE 8
+`define PAR_CLOCK 100_000_000
+
+module top(input logic CLK, input logic BUTTON, output logic [`REGSIZE-1:0] OUTPUT);
+
+  logic [31:0] counter;
+  logic CLOCK;
+  assign CLOCK = (counter < `PAR_CLOCK/2) ? 1'b0 : 1'b1;
+
+  logic [31:0] next_counter;
+  assign next_counter = (BUTTON | counter < `PAR_CLOCK) ? counter + 32'b1 : 32'b0;
+  always @(posedge CLK) begin
+    counter <= next_counter;
+  end
+
+  logic [`REGSIZE-1:0] OUT;
+  assign OUTPUT[0] = (counter % 100 == 0) ? OUT[0] : 1'b0;
+  assign OUTPUT[1] = (counter % 100 == 0) ? OUT[1] : 1'b0;
+  assign OUTPUT[2] = (counter % 100 == 0) ? OUT[2] : 1'b0;
+  assign OUTPUT[3] = (counter % 100 == 0) ? OUT[3] : 1'b0;
+  assign OUTPUT[4] = OUT[4];
+  assign OUTPUT[5] = OUT[5];
+  assign OUTPUT[6] = OUT[6];
+  assign OUTPUT[7] = CLOCK;
+
+  logic RESET;
+  assign RESET = BUTTON;
+  cpu cpu_0(.*);
+
+endmodule

@@ -1,0 +1,24 @@
+# Simple CPU
+
+This repository is for Xilinx Artix-7 35T Arty FPGA Evaluation Kit.
+
+HDL codes are written in System Verilog.
+
+### Instruction
+
+|mnemonic |binary    |size |explanation|
+|:--------|:---------|:----|:----------|
+|mov  x, y|0000 xx yy|8bit |x = y      |
+|add  x, y|0001 xx yy|8bit |x = x + y  |
+|hlt      |1111 ?? ??|8bit |stop       |
+
+|register|binary|
+|:-------|:-----|
+|reg a   |00    |
+|reg b   |01    |
+|reg c   |10    |
+|imm     |11    |
+
+### License
+
+MIT
