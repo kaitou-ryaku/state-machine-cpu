@@ -61,15 +61,7 @@ module cpu(/*{{{*/
 
   clock_posedge clock_posedge0(.*);
 
-  assign OUT[0] = a[0];
-  assign OUT[1] = a[1];
-  assign OUT[2] = a[2];
-  assign OUT[3] = a[3];
-  assign OUT[4] = a[4];
-  assign OUT[5] = a[5];
-  assign OUT[6] = a[6];
-  //assign OUT[7] = CLOCK;
-  assign OUT[7] = a[7];
+  assign OUT = a;
 
 endmodule/*}}}*/
 
