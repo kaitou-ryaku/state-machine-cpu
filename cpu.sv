@@ -10,14 +10,18 @@ typedef enum logic [2:0] {
   , WRITE
 } STATE_TYPE;
 
-typedef enum logic [3:0] {ADD, MOV, HLT} OPECODE_TYPE;
+typedef enum logic [3:0] {ADD, MOV, HLT, JMP} OPECODE_TYPE;
 
 typedef enum logic [1:0] {REG_A, REG_B, REG_C, IMM} OPERAND_TYPE;
 
 typedef logic [`REGSIZE-1:0] DEFAULT_TYPE;
 /*}}}*/
 
-module cpu(input logic CLOCK, input logic RESET, output DEFAULT_TYPE OUT);/*{{{*/
+module cpu(/*{{{*/
+  input logic CLOCK
+  , input logic RESET
+  , output DEFAULT_TYPE OUT
+);
 
   STATE_TYPE state, next_state;
 
@@ -45,6 +49,9 @@ module cpu(input logic CLOCK, input logic RESET, output DEFAULT_TYPE OUT);/*{{{*
 
   DEFAULT_TYPE dst;
   alu alu0(.*);
+
+  DEFAULT_TYPE jmp;
+  jmp_address jmp_address0(.*);
 
   update_state update_state0(.*);
   update_reg update_reg0(.*);
@@ -96,6 +103,8 @@ module decoder(/*{{{*/
     unique casez (ope)
       `REGSIZE'b0000????: decode_ope = MOV;
       `REGSIZE'b0001????: decode_ope = ADD;
+      `REGSIZE'b1100????: decode_ope = JMP;
+      `REGSIZE'b1111????: decode_ope = HLT;
       default:            decode_ope = HLT;
     endcase
 
@@ -154,8 +163,24 @@ module alu(/*{{{*/
 
 endmodule/*}}}*/
 
+module jmp_address(/*{{{*/
+  input OPECODE_TYPE decode_ope
+  , input DEFAULT_TYPE imm
+  , output DEFAULT_TYPE jmp
+);
+
+  always_comb begin
+    unique case (decode_ope)
+      JMP:     jmp = imm;
+      default: jmp = `REGSIZE'b0;
+    endcase
+  end
+
+endmodule/*}}}*/
+
 module update_state(/*{{{*/
   input STATE_TYPE state
+  , input OPECODE_TYPE decode_ope
   , input OPERAND_TYPE decode_src
   , output STATE_TYPE next_state
 );
@@ -165,10 +190,9 @@ module update_state(/*{{{*/
       FETCH_OPERATION: next_state = DECODE;
 
       DECODE: begin
-        unique casez (decode_src)
-          IMM:     next_state = FETCH_IMMEDIATE;
-          default: next_state = EXECUTE;
-        endcase
+        if      (decode_ope == JMP) next_state = FETCH_IMMEDIATE;
+        else if (decode_src == IMM) next_state = FETCH_IMMEDIATE;
+        else                        next_state = EXECUTE;
       end
 
       FETCH_IMMEDIATE: next_state = EXECUTE;
@@ -235,20 +259,21 @@ module update_ip(/*{{{*/
   input STATE_TYPE state
   , input DEFAULT_TYPE ip
   , input OPECODE_TYPE decode_ope
+  , input DEFAULT_TYPE jmp
   , output DEFAULT_TYPE next_ip
 );
   always_comb begin
-    unique case (state)
-      FETCH_OPERATION: begin
-        unique case(decode_ope)
-          HLT:     next_ip = ip;
-          default: next_ip = ip + `REGSIZE'b1;
-        endcase
-      end
+    unique if (decode_ope == HLT) begin
+      next_ip = ip;
 
-      FETCH_IMMEDIATE: next_ip = ip + `REGSIZE'b1;
-      default:         next_ip = ip;
-    endcase
+    end else begin
+      unique case (state)
+        FETCH_OPERATION: next_ip = ip + `REGSIZE'b1;
+        FETCH_IMMEDIATE: next_ip = ip + `REGSIZE'b1;
+        EXECUTE:         next_ip = ip + jmp;
+        default:         next_ip = ip;
+      endcase
+    end
   end
 endmodule/*}}}*/
 
@@ -269,15 +294,14 @@ endmodule/*}}}*/
 
 module update_imm(/*{{{*/
   input STATE_TYPE state
-  , input  DEFAULT_TYPE ope
-  , input  DEFAULT_TYPE ip
   , input  DEFAULT_TYPE memory_ip
+  , input  DEFAULT_TYPE imm
   , output DEFAULT_TYPE next_imm
 );
   always_comb begin
     unique case (state)
       FETCH_IMMEDIATE: next_imm = memory_ip;
-      default:         next_imm = ope;
+      default:         next_imm = imm;
     endcase
   end
 endmodule/*}}}*/
