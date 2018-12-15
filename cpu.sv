@@ -59,6 +59,8 @@ module cpu(/*{{{*/
   update_ope update_ope0(.*);
   update_imm update_imm0(.*);
 
+  clock_posedge clock_posedge0(.*);
+
   assign OUT[0] = a[0];
   assign OUT[1] = a[1];
   assign OUT[2] = a[2];
@@ -68,27 +70,6 @@ module cpu(/*{{{*/
   assign OUT[6] = a[6];
   //assign OUT[7] = CLOCK;
   assign OUT[7] = a[7];
-
-  always_ff @(posedge CLOCK) begin
-    unique if (RESET) begin
-      state <= FETCH_OPERATION;
-      ip    <= `REGSIZE'b0;
-      ope   <= `REGSIZE'b0;
-      imm   <= `REGSIZE'b0;
-      a     <= `REGSIZE'b0;
-      b     <= `REGSIZE'b0;
-      c     <= `REGSIZE'b0;
-
-    end else begin
-      state <= next_state;
-      ip    <= next_ip;
-      ope   <= next_ope;
-      imm   <= next_imm;
-      a     <= next_a;
-      b     <= next_b;
-      c     <= next_c;
-    end
-  end
 
 endmodule/*}}}*/
 
@@ -303,5 +284,47 @@ module update_imm(/*{{{*/
       FETCH_IMMEDIATE: next_imm = memory_ip;
       default:         next_imm = imm;
     endcase
+  end
+endmodule/*}}}*/
+
+module clock_posedge(/*{{{*/
+  input logic CLOCK
+  , input logic RESET
+
+  , input  STATE_TYPE   next_state
+  , input  DEFAULT_TYPE next_ip
+  , input  DEFAULT_TYPE next_ope
+  , input  DEFAULT_TYPE next_imm
+  , input  DEFAULT_TYPE next_a
+  , input  DEFAULT_TYPE next_b
+  , input  DEFAULT_TYPE next_c
+
+  , output STATE_TYPE   state
+  , output DEFAULT_TYPE ip
+  , output DEFAULT_TYPE ope
+  , output DEFAULT_TYPE imm
+  , output DEFAULT_TYPE a
+  , output DEFAULT_TYPE b
+  , output DEFAULT_TYPE c
+);
+  always_ff @(posedge CLOCK) begin
+    unique if (RESET) begin
+      state <= FETCH_OPERATION;
+      ip    <= `REGSIZE'b0;
+      ope   <= `REGSIZE'b0;
+      imm   <= `REGSIZE'b0;
+      a     <= `REGSIZE'b0;
+      b     <= `REGSIZE'b0;
+      c     <= `REGSIZE'b0;
+
+    end else begin
+      state <= next_state;
+      ip    <= next_ip;
+      ope   <= next_ope;
+      imm   <= next_imm;
+      a     <= next_a;
+      b     <= next_b;
+      c     <= next_c;
+    end
   end
 endmodule/*}}}*/
