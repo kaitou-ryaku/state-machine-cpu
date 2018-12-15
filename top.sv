@@ -9,11 +9,7 @@ module top(input logic CLK, input logic BUTTON, output logic [`REGSIZE-1:0] OUTP
   assign CLOCK = (counter < `PAR_CLOCK/2) ? 1'b0 : 1'b1;
 
   logic [31:0] next_counter;
-  always_comb begin
-    priority if (BUTTON == 1'b0)   next_counter = 32'b0;
-    else if (counter < `PAR_CLOCK) next_counter = counter + 32'b1;
-    else                           next_counter = 32'b0;
-  end
+  assign next_counter = (counter < `PAR_CLOCK) ? counter+32'b1 : 32'b0;
 
   always @(posedge CLK) begin
     counter <= next_counter;
