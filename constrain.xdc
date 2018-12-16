@@ -24,3 +24,7 @@ set_property -dict {PACKAGE_PIN C10 IOSTANDARD LVCMOS33} [get_ports {PHYSICAL_SW
 set_property -dict {PACKAGE_PIN A10 IOSTANDARD LVCMOS33} [get_ports {PHYSICAL_SWITCH[3]}];
 
 set_property -dict {PACKAGE_PIN C2  IOSTANDARD LVCMOS33} [get_ports {PHYSICAL_RESET}];
+
+# UART
+set_property -dict {PACKAGE_PIN D10 IOSTANDARD LVCMOS33} [get_ports {PHYSICAL_UART_TX}];
+set_property -dict {PACKAGE_PIN A9  IOSTANDARD LVCMOS33} [get_ports {PHYSICAL_UART_RX}];

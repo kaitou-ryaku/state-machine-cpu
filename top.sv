@@ -7,9 +7,11 @@ module top(/*{{{*/
   , input  logic                PHYSICAL_BUTTON
   , input  logic [3:0]          PHYSICAL_SWITCH
   , input  logic                PHYSICAL_RESET
+  , input  logic                PHYSICAL_UART_RX
   , output logic [`REGSIZE-1:0] PHYSICAL_LED
   , output logic                PHYSICAL_LED_RESET
   , output logic                PHYSICAL_LED_CLOCK
+  , output logic                PHYSICAL_UART_TX
 );
   logic CLOCK;
   logic [31:0] counter;
@@ -26,6 +28,7 @@ module top(/*{{{*/
   logic [`REGSIZE-1:0] OUT;
 
   cpu cpu_0(.*);
+  assign PHYSICAL_UART_TX = PHYSICAL_SWITCH[0] ? PHYSICAL_UART_RX : 1'b0;
 
   light_dimmer light_dimmer0(
     .counter(counter)
