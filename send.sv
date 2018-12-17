@@ -49,7 +49,7 @@ module send #(parameter logic[31:0] wtime = 32'h28B0) (
       busy      <= 1'b0;
       buff      <= {1'b1, 8'b11111111, 1'b0};
       clk_count <= 0;
-      buf_count <= 4'd0;
+      buf_count <= 4'd9;
     end else begin
       busy      <= next_busy;
       buff      <= next_buff;
