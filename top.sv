@@ -27,18 +27,24 @@ module top(/*{{{*/
   assign RESET = ~PHYSICAL_RESET;
   logic [`REGSIZE-1:0] OUT;
 
-  cpu cpu_0(.*);
-  assign PHYSICAL_UART_TX = PHYSICAL_SWITCH[0] ? PHYSICAL_UART_RX : 1'b0;
+  // cpu cpu_0(.*);
+  // assign PHYSICAL_UART_TX = PHYSICAL_SWITCH[0] ? PHYSICAL_UART_RX : 1'b0;
 
-  light_dimmer light_dimmer0(
-    .counter(counter)
-    , .OUT(OUT)
-    , .RESET(RESET)
-    , .CLOCK(CLOCK)
-    , .LED(PHYSICAL_LED)
-    , .LED_RESET(PHYSICAL_LED_RESET)
-    , .LED_CLOCK(PHYSICAL_LED_CLOCK)
+  send_g send_g0 (
+    .UART_TX(PHYSICAL_UART_TX),
+    .CLK(PHYSICAL_CLOCK),
+    .RESET(RESET)
   );
+
+  //light_dimmer light_dimmer0(
+  //  .counter(counter)
+  //  , .OUT(OUT)
+  //  , .RESET(RESET)
+  //  , .CLOCK(CLOCK)
+  //  , .LED(PHYSICAL_LED)
+  //  , .LED_RESET(PHYSICAL_LED_RESET)
+  //  , .LED_CLOCK(PHYSICAL_LED_CLOCK)
+  //);
 endmodule/*}}}*/
 
 module clock_reducer(/*{{{*/
@@ -75,4 +81,41 @@ module light_dimmer(/*{{{*/
 
   assign LED_CLOCK = &(counter[6:0]) ? CLOCK : 1'b0;
   assign LED_RESET = &(counter[1:0]) ? RESET : 1'b0;
+endmodule/*}}}*/
+
+module send_g #(parameter logic[31:0] wtime = 32'h28B0) (/*{{{*/
+  output logic UART_TX,
+  input logic CLK,
+  input logic RESET
+);
+
+  logic [31:0] ct;
+  logic tx;
+  assign UART_TX = tx;
+
+  logic [7:0] data = 8'b01100111; // 'g'
+  logic [9:0] buff = {1'b1, data, 1'b0};
+
+  always_ff @(posedge CLK) begin
+    if (RESET) begin
+      ct <= 0;
+      tx <= 1'b1;
+    end else begin
+      if      (ct < wtime*10) ct <= ct + 1;
+      else                    ct <= 0;
+
+      if      (ct < wtime*1 ) tx <= buff[0];
+      else if (ct < wtime*2 ) tx <= buff[1];
+      else if (ct < wtime*3 ) tx <= buff[2];
+      else if (ct < wtime*4 ) tx <= buff[3];
+      else if (ct < wtime*5 ) tx <= buff[4];
+      else if (ct < wtime*6 ) tx <= buff[5];
+      else if (ct < wtime*7 ) tx <= buff[6];
+      else if (ct < wtime*8 ) tx <= buff[7];
+      else if (ct < wtime*9 ) tx <= buff[8];
+      else if (ct < wtime*10) tx <= buff[9];
+      else                    tx <= 1'b1;
+    end
+  end
+
 endmodule/*}}}*/
