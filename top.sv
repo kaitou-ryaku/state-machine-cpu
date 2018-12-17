@@ -27,24 +27,24 @@ module top(/*{{{*/
   assign RESET = ~PHYSICAL_RESET;
   logic [`REGSIZE-1:0] OUT;
 
-  // cpu cpu_0(.*);
-  // assign PHYSICAL_UART_TX = PHYSICAL_SWITCH[0] ? PHYSICAL_UART_RX : 1'b0;
+  cpu cpu_0(.*);
 
-  send_g send_g0 (
+  send #(32'h28B0) sender (
     .UART_TX(PHYSICAL_UART_TX),
     .CLK(PHYSICAL_CLOCK),
-    .RESET(RESET)
+    .RESET(RESET),
+    .data(OUT)
   );
 
-  //light_dimmer light_dimmer0(
-  //  .counter(counter)
-  //  , .OUT(OUT)
-  //  , .RESET(RESET)
-  //  , .CLOCK(CLOCK)
-  //  , .LED(PHYSICAL_LED)
-  //  , .LED_RESET(PHYSICAL_LED_RESET)
-  //  , .LED_CLOCK(PHYSICAL_LED_CLOCK)
-  //);
+  light_dimmer light_dimmer0(
+    .counter(counter)
+    , .OUT(OUT)
+    , .RESET(RESET)
+    , .CLOCK(CLOCK)
+    , .LED(PHYSICAL_LED)
+    , .LED_RESET(PHYSICAL_LED_RESET)
+    , .LED_CLOCK(PHYSICAL_LED_CLOCK)
+  );
 endmodule/*}}}*/
 
 module clock_reducer(/*{{{*/
@@ -83,18 +83,18 @@ module light_dimmer(/*{{{*/
   assign LED_RESET = &(counter[1:0]) ? RESET : 1'b0;
 endmodule/*}}}*/
 
-module send_g #(parameter logic[31:0] wtime = 32'h28B0) (/*{{{*/
+module send #(parameter logic[31:0] wtime = 32'h28B0) (/*{{{*/
   output logic UART_TX,
   input logic CLK,
-  input logic RESET
+  input logic RESET,
+  input logic [7:0] data
 );
 
   logic [31:0] ct;
   logic tx;
   assign UART_TX = tx;
-
-  logic [7:0] data = 8'b01100111; // 'g'
-  logic [9:0] buff = {1'b1, data, 1'b0};
+  logic [9:0] buff;
+  assign buff = {1'b1, data, 1'b0};
 
   always_ff @(posedge CLK) begin
     if (RESET) begin
