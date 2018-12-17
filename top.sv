@@ -4,7 +4,7 @@
 
 module top(/*{{{*/
   input    logic                PHYSICAL_CLOCK
-  , input  logic                PHYSICAL_BUTTON
+  , input  logic [3:0]          PHYSICAL_BUTTON
   , input  logic [3:0]          PHYSICAL_SWITCH
   , input  logic                PHYSICAL_RESET
   , input  logic                PHYSICAL_UART_RX
@@ -17,23 +17,34 @@ module top(/*{{{*/
   logic [31:0] counter;
 
   clock_reducer clock_reducer0(
-    .counter(counter)
-    , .QUICK_CLOCK(PHYSICAL_CLOCK)
-    , .SWITCH(PHYSICAL_SWITCH)
-    , .SLOW_CLOCK(CLOCK)
+    .counter(counter),
+    .QUICK_CLOCK(PHYSICAL_CLOCK),
+    .SWITCH(PHYSICAL_SWITCH),
+    .SLOW_CLOCK(CLOCK)
   );
 
   logic RESET;
   assign RESET = ~PHYSICAL_RESET;
   logic [`REGSIZE-1:0] OUT;
 
-  cpu cpu_0(.*);
+  // cpu cpu_0(.*);
+  assign OUT = 8'b01100111;
 
+  logic flag;
+  clock_up_check clock_up_check0(
+    .QUICK_CLOCK(PHYSICAL_CLOCK),
+    .SLOW_CLOCK(CLOCK),
+    .flag(flag)
+  );
+
+  logic busy;
   send #(32'h28B0) sender (
     .UART_TX(PHYSICAL_UART_TX),
     .CLK(PHYSICAL_CLOCK),
     .RESET(RESET),
-    .data(OUT)
+    .data(OUT),
+    .flag(flag),
+    .busy(busy)
   );
 
   light_dimmer light_dimmer0(
@@ -80,42 +91,37 @@ module light_dimmer(/*{{{*/
   assign LED = {LED2, LED1};
 
   assign LED_CLOCK = &(counter[6:0]) ? CLOCK : 1'b0;
-  assign LED_RESET = &(counter[1:0]) ? RESET : 1'b0;
+  assign LED_RESET = &(counter[6:0]) ? RESET : 1'b0;
 endmodule/*}}}*/
 
-module send #(parameter logic[31:0] wtime = 32'h28B0) (/*{{{*/
-  output logic UART_TX,
-  input logic CLK,
-  input logic RESET,
-  input logic [7:0] data
+module clock_up_check(/*{{{*/
+  input  logic QUICK_CLOCK,
+  input  logic SLOW_CLOCK,
+  output logic flag // SLOW_CLOCK_UP:1 OTHERWISE:0
 );
+  logic next_flag;
+  logic up_flag, next_up_flag;
 
-  logic [31:0] ct;
-  logic tx;
-  assign UART_TX = tx;
-  logic [9:0] buff;
-  assign buff = {1'b1, data, 1'b0};
+  always_comb begin
+    // SLOW_CLOCK LOW
+    unique if (~SLOW_CLOCK) begin
+      next_up_flag = 1'b1;
+      next_flag    = 1'b0;
 
-  always_ff @(posedge CLK) begin
-    if (RESET) begin
-      ct <= 0;
-      tx <= 1'b1;
+    // SLOW_CLOCK UP
+    end else if (SLOW_CLOCK & up_flag)  begin
+      next_up_flag = 1'b0;
+      next_flag    = 1'b1;
+
+    // SLOW_CLOCK HIGH
     end else begin
-      if      (ct < wtime*10) ct <= ct + 1;
-      else                    ct <= 0;
-
-      if      (ct < wtime*1 ) tx <= buff[0];
-      else if (ct < wtime*2 ) tx <= buff[1];
-      else if (ct < wtime*3 ) tx <= buff[2];
-      else if (ct < wtime*4 ) tx <= buff[3];
-      else if (ct < wtime*5 ) tx <= buff[4];
-      else if (ct < wtime*6 ) tx <= buff[5];
-      else if (ct < wtime*7 ) tx <= buff[6];
-      else if (ct < wtime*8 ) tx <= buff[7];
-      else if (ct < wtime*9 ) tx <= buff[8];
-      else if (ct < wtime*10) tx <= buff[9];
-      else                    tx <= 1'b1;
+      next_up_flag = 1'b0;
+      next_flag    = 1'b0;
     end
   end
 
+  always_ff @(posedge QUICK_CLOCK) begin
+    flag    <= next_flag;
+    up_flag <= next_up_flag;
+  end
 endmodule/*}}}*/
