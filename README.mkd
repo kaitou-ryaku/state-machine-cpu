@@ -6,13 +6,14 @@ HDL codes are written in System Verilog.
 
 ### Instruction
 
-|mnemonic |binary    |size |explanation|
+|mnemonic |binary    |bit  |explanation|
 |:--------|:---------|:----|:----------|
-|mov  x, y|0000 xx yy|8bit |x = y      |
-|add  x, y|0001 xx yy|8bit |x = x + y  |
-|hlt      |1111 ?? ??|8bit |stop       |
+|mov  x, y|0000 xx yy|8/16 |x = y      |
+|add  x, y|0001 xx yy|8/16 |x = x + y  |
+|jmp imm  |1100 ?? ??|16   |           |
+|hlt      |1111 ?? ??|8    |stop       |
 
-|register|binary|
+|x,y     |binary|
 |:-------|:-----|
 |reg a   |00    |
 |reg b   |01    |
