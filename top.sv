@@ -27,8 +27,7 @@ module top(/*{{{*/
   assign RESET = ~PHYSICAL_RESET;
   logic [`REGSIZE-1:0] OUT;
 
-  // cpu cpu_0(.*);
-  assign OUT = 8'b01100111;
+  cpu cpu_0(.*);
 
   logic flag;
   clock_up_check clock_up_check0(
