@@ -19,6 +19,14 @@ HDL codes are written in System Verilog.
 |reg c   |10    |
 |imm     |11    |
 
+### Vivado
+
+To change the number of threads used in synthesis,
+
+```
+set_param general.maxThreads 8
+```
+
 ### License
 
 MIT
