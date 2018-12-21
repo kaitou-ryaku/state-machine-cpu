@@ -6,7 +6,7 @@ module cpu(/*{{{*/
   , output DEFAULT_TYPE OUT
 );
 
-  DEFAULT_TYPE address, next_address, read_memory_value;
+  DEFAULT_TYPE address, read_memory_value;
   MEMORY_FLAG_TYPE rw_flag, next_rw_flag;
   DEFAULT_TYPE write_memory_value, next_write_memory_value;
   memory_unit memory_unit0(.*);
@@ -271,29 +271,28 @@ endmodule/*}}}*/
 module update_memory_parameter(/*{{{*/
   input    STATE_TYPE       state
   , input  DEFAULT_TYPE     ip
-  , input  DEFAULT_TYPE     address
   , input  DEFAULT_TYPE     write_memory_value
   , input  MEMORY_FLAG_TYPE rw_flag
-  , output DEFAULT_TYPE     next_address
   , output DEFAULT_TYPE     next_write_memory_value
   , output MEMORY_FLAG_TYPE next_rw_flag
+  , output DEFAULT_TYPE     address
 );
   always_comb begin
     unique case (state)
       FETCH_OPERATION: begin
-        next_address            = ip;
+        address                 = ip;
         next_write_memory_value = write_memory_value;
         next_rw_flag            = MEMORY_READ;
       end
 
       FETCH_IMMEDIATE: begin
-        next_address            = ip;
+        address                 = ip;
         next_write_memory_value = write_memory_value;
         next_rw_flag            = MEMORY_READ;
       end
 
       default: begin
-        next_address            = address;
+        address                 = `REGSIZE'd0;
         next_write_memory_value = write_memory_value;
         next_rw_flag            = MEMORY_STAY;
       end
@@ -348,22 +347,18 @@ module clock_posedge_memory_parameter(/*{{{*/
   input logic CLOCK
   , input logic RESET
 
-  , input  DEFAULT_TYPE     next_address
   , input  DEFAULT_TYPE     next_write_memory_value
   , input  MEMORY_FLAG_TYPE next_rw_flag
 
-  , output DEFAULT_TYPE     address
   , output DEFAULT_TYPE     write_memory_value
   , output MEMORY_FLAG_TYPE rw_flag
 );
   always_ff @(posedge CLOCK) begin
     unique if (RESET) begin
-      address            = `REGSIZE'b0;
       write_memory_value = `REGSIZE'b0;
       rw_flag            = MEMORY_STAY;
 
     end else begin
-      address            = next_address;
       write_memory_value = next_write_memory_value;
       rw_flag            = next_rw_flag;
     end
