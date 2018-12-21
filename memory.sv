@@ -9,8 +9,6 @@ module memory_unit(
   , output DEFAULT_TYPE     read_memory_value
 );
 
-  assign read_memory_value = `REGSIZE'd0;
-
   DEFAULT_TYPE initial_memory [0:`MEMSIZE-1];
   initial $readmemb("test.mem", initial_memory);
 
