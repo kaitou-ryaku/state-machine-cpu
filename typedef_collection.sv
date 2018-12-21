@@ -1,0 +1,25 @@
+`ifndef INCLUDE_TYPEDEF_COLLECTION_SV
+`define INCLUDE_TYPEDEF_COLLECTION_SV
+
+`define MEMSIZE 16
+`define REGSIZE 8
+
+typedef logic [`REGSIZE-1:0] DEFAULT_TYPE;
+
+typedef enum logic [2:0] {
+  FETCH_OPERATION
+  , COPY_OPERATION
+  , DECODE
+  , FETCH_IMMEDIATE
+  , COPY_IMMEDIATE
+  , EXECUTE
+  , WRITE
+} STATE_TYPE;
+
+typedef enum logic [3:0] {ADD, MOV, HLT, JMP} OPECODE_TYPE;
+
+typedef enum logic [1:0] {REG_A, REG_B, REG_C, IMM} OPERAND_TYPE;
+
+typedef enum logic [3:0] {MEMORY_STAY, MEMORY_READ, MEMORY_WRITE} MEMORY_FLAG_TYPE;
+
+`endif

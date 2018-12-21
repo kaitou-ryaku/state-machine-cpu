@@ -1,42 +1,31 @@
-`define MEMSIZE 16
-`define REGSIZE 8
-
-typedef logic [`REGSIZE-1:0] DEFAULT_TYPE;
-typedef enum logic [3:0] {MEMORY_STAY, MEMORY_READ, MEMORY_WRITE} MEMORY_FLAG;
+`include "typedef_collection.sv"
 
 module memory_unit(
-  input    logic        CLOCK
-  , input  logic        RESET
-  , input  MEMORY_FLAG  rw_flag
-  , input  DEFAULT_TYPE address
-  , input  DEFAULT_TYPE write_value
-  , output DEFAULT_TYPE read_value
+  input    logic            CLOCK
+  , input  logic            RESET
+  , input  MEMORY_FLAG_TYPE rw_flag
+  , input  DEFAULT_TYPE     address
+  , input  DEFAULT_TYPE     write_memory_value
+  , output DEFAULT_TYPE     read_memory_value
 );
+
+  assign read_memory_value = `REGSIZE'd0;
+
   DEFAULT_TYPE initial_memory [0:`MEMSIZE-1];
   initial $readmemb("test.mem", initial_memory);
 
   DEFAULT_TYPE memory [0:`MEMSIZE-1];
-  assign read_value = memory[address];
+  assign read_memory_value = memory[address];
 
-  DEFAULT_TYPE next_memory [0:`MEMSIZE-1];
+  DEFAULT_TYPE next_memory;
   always_comb begin
-    if (rw_flag == MEMORY_WRITE) begin
-      next_memory = {
-        memory[0:address-`REGSIZE'd1],
-        write_value,
-        memory[address+`REGSIZE'd1:`MEMSIZE-1]
-      };
-    end else begin
-      next_memory = memory;
-    end
+    if (rw_flag == MEMORY_WRITE) next_memory = write_memory_value;
+    else                         next_memory = memory[address];
   end
 
   always_ff @(posedge CLOCK) begin
-    if (RESET) begin
-      memory <= initial_memory;
-    end else begin
-      memory <= next_memory;
-    end
+    if (RESET) memory <= initial_memory;
+    else memory[address] <= next_memory; // other memory address: latchbegin
   end
 
 endmodule

@@ -1,21 +1,4 @@
-`define MEMSIZE 16
-`define REGSIZE 8
-
-// typedef{{{
-typedef enum logic [2:0] {
-  FETCH_OPERATION
-  , DECODE
-  , FETCH_IMMEDIATE
-  , EXECUTE
-  , WRITE
-} STATE_TYPE;
-
-typedef enum logic [3:0] {ADD, MOV, HLT, JMP} OPECODE_TYPE;
-
-typedef enum logic [1:0] {REG_A, REG_B, REG_C, IMM} OPERAND_TYPE;
-
-typedef logic [`REGSIZE-1:0] DEFAULT_TYPE;
-/*}}}*/
+`include "typedef_collection.sv"
 
 module cpu(/*{{{*/
   input logic CLOCK
@@ -23,11 +6,14 @@ module cpu(/*{{{*/
   , output DEFAULT_TYPE OUT
 );
 
-  STATE_TYPE state, next_state;
+  DEFAULT_TYPE address, next_address, read_memory_value;
+  MEMORY_FLAG_TYPE rw_flag, next_rw_flag;
+  DEFAULT_TYPE write_memory_value, next_write_memory_value;
+  memory_unit memory_unit0(.*);
 
+  STATE_TYPE state, next_state;
   DEFAULT_TYPE ip, next_ip;
-  DEFAULT_TYPE memory_ip;
-  memory_unit memory_unit0(ip, memory_ip);
+  update_memory_parameter update_memory_parameter0(.*);
 
   DEFAULT_TYPE ope, next_ope;
   OPECODE_TYPE decode_ope;
@@ -60,6 +46,7 @@ module cpu(/*{{{*/
   update_imm update_imm0(.*);
 
   clock_posedge clock_posedge0(.*);
+  clock_posedge_memory_parameter clock_posedge_memory_parameter0(.*);
 
   assign OUT = a;
 
@@ -160,7 +147,8 @@ module update_state(/*{{{*/
 
   always_comb begin
     unique case (state)
-      FETCH_OPERATION: next_state = DECODE;
+      FETCH_OPERATION: next_state = COPY_OPERATION;
+      COPY_OPERATION:  next_state = DECODE;
 
       DECODE: begin
         if      (decode_ope == JMP) next_state = FETCH_IMMEDIATE;
@@ -168,7 +156,8 @@ module update_state(/*{{{*/
         else                        next_state = EXECUTE;
       end
 
-      FETCH_IMMEDIATE: next_state = EXECUTE;
+      FETCH_IMMEDIATE: next_state = COPY_IMMEDIATE;
+      COPY_IMMEDIATE : next_state = EXECUTE;
       EXECUTE:         next_state = WRITE;
       WRITE:           next_state = FETCH_OPERATION;
       default:         next_state = FETCH_OPERATION;
@@ -254,12 +243,12 @@ module update_ope(/*{{{*/
   input STATE_TYPE state
   , input  DEFAULT_TYPE ope
   , input  DEFAULT_TYPE ip
-  , input  DEFAULT_TYPE memory_ip
+  , input  DEFAULT_TYPE read_memory_value
   , output DEFAULT_TYPE next_ope
 );
   always_comb begin
     unique case (state)
-      FETCH_OPERATION: next_ope = memory_ip;
+      FETCH_OPERATION: next_ope = read_memory_value;
       default:         next_ope = ope;
     endcase
   end
@@ -267,14 +256,47 @@ endmodule/*}}}*/
 
 module update_imm(/*{{{*/
   input STATE_TYPE state
-  , input  DEFAULT_TYPE memory_ip
+  , input  DEFAULT_TYPE read_memory_value
   , input  DEFAULT_TYPE imm
   , output DEFAULT_TYPE next_imm
 );
   always_comb begin
     unique case (state)
-      FETCH_IMMEDIATE: next_imm = memory_ip;
+      FETCH_IMMEDIATE: next_imm = read_memory_value;
       default:         next_imm = imm;
+    endcase
+  end
+endmodule/*}}}*/
+
+module update_memory_parameter(/*{{{*/
+  input    STATE_TYPE       state
+  , input  DEFAULT_TYPE     ip
+  , input  DEFAULT_TYPE     address
+  , input  DEFAULT_TYPE     write_memory_value
+  , input  MEMORY_FLAG_TYPE rw_flag
+  , output DEFAULT_TYPE     next_address
+  , output DEFAULT_TYPE     next_write_memory_value
+  , output MEMORY_FLAG_TYPE next_rw_flag
+);
+  always_comb begin
+    unique case (state)
+      FETCH_OPERATION: begin
+        next_address            = ip;
+        next_write_memory_value = write_memory_value;
+        next_rw_flag            = MEMORY_READ;
+      end
+
+      FETCH_IMMEDIATE: begin
+        next_address            = ip;
+        next_write_memory_value = write_memory_value;
+        next_rw_flag            = MEMORY_READ;
+      end
+
+      default: begin
+        next_address            = address;
+        next_write_memory_value = write_memory_value;
+        next_rw_flag            = MEMORY_STAY;
+      end
     endcase
   end
 endmodule/*}}}*/
@@ -298,6 +320,7 @@ module clock_posedge(/*{{{*/
   , output DEFAULT_TYPE a
   , output DEFAULT_TYPE b
   , output DEFAULT_TYPE c
+
 );
   always_ff @(posedge CLOCK) begin
     unique if (RESET) begin
@@ -317,6 +340,32 @@ module clock_posedge(/*{{{*/
       a     <= next_a;
       b     <= next_b;
       c     <= next_c;
+    end
+  end
+endmodule/*}}}*/
+
+module clock_posedge_memory_parameter(/*{{{*/
+  input logic CLOCK
+  , input logic RESET
+
+  , input  DEFAULT_TYPE     next_address
+  , input  DEFAULT_TYPE     next_write_memory_value
+  , input  MEMORY_FLAG_TYPE next_rw_flag
+
+  , output DEFAULT_TYPE     address
+  , output DEFAULT_TYPE     write_memory_value
+  , output MEMORY_FLAG_TYPE rw_flag
+);
+  always_ff @(posedge CLOCK) begin
+    unique if (RESET) begin
+      address            = `REGSIZE'b0;
+      write_memory_value = `REGSIZE'b0;
+      rw_flag            = MEMORY_STAY;
+
+    end else begin
+      address            = next_address;
+      write_memory_value = next_write_memory_value;
+      rw_flag            = next_rw_flag;
     end
   end
 endmodule/*}}}*/
