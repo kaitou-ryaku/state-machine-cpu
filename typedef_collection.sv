@@ -6,7 +6,7 @@
 
 typedef logic [`REGSIZE-1:0] DEFAULT_TYPE;
 
-typedef enum logic [3:0] {
+typedef enum logic [4:0] {
   RESET_STATE
   , FETCH_OPERATION
   , COPY_OPERATION
@@ -15,8 +15,12 @@ typedef enum logic [3:0] {
   , COPY_IMMEDIATE
   , FETCH_SRC
   , COPY_SRC
+  , FETCH_SRC_IMM
+  , COPY_SRC_IMM
   , FETCH_DST
   , COPY_DST
+  , FETCH_DST_IMM
+  , COPY_DST_IMM
   , EXECUTE
   , WRITE_REGISTER
   , WRITE_MEMORY

@@ -24,7 +24,7 @@ HDL codes are written in System Verilog.
 |:-------|:-----|
 |a       |00    |
 |[a]     |01    |
-|UNUSED  |10    |
+|[imm]   |10    |
 |UNUSED  |11    |
 
 ### Vivado
