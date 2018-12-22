@@ -3,13 +3,12 @@
 module cpu(/*{{{*/
   input logic CLOCK
   , input logic RESET
-  , output DEFAULT_TYPE OUT
+  , input  DEFAULT_TYPE     read_bus
+  , output MEMORY_FLAG_TYPE ctrl_bus
+  , output DEFAULT_TYPE     addr_bus
+  , output DEFAULT_TYPE     write_bus
 );
-
-  DEFAULT_TYPE address, read_memory_value;
-  MEMORY_FLAG_TYPE rw_flag;
-  DEFAULT_TYPE write_memory_value, next_write_memory_value;
-  memory_unit memory_unit0(.*);
+  DEFAULT_TYPE next_write_bus;
 
   STATE_TYPE state, next_state;
   DEFAULT_TYPE ip, next_ip;
@@ -37,9 +36,9 @@ module cpu(/*{{{*/
   alu alu0(.*);
 
   DEFAULT_TYPE jmp;
-  jmp_address jmp_address0(.*);
+  jmp_addr_bus jmp_addr_bus0(.*);
 
-  update_memory_address update_memory_address0(.*);
+  update_memory_addr_bus update_memory_addr_bus0(.*);
   update_memory_flag update_memory_flag0(.*);
 
   update_state update_state0(.*);
@@ -52,8 +51,6 @@ module cpu(/*{{{*/
   update_imm update_imm0(.*);
 
   clock_posedge clock_posedge0(.*);
-
-  assign OUT = a;
 
 endmodule/*}}}*/
 
@@ -157,7 +154,7 @@ module alu(/*{{{*/
 
 endmodule/*}}}*/
 
-module jmp_address(/*{{{*/
+module jmp_addr_bus(/*{{{*/
   input OPECODE_TYPE decode_ope
   , input DEFAULT_TYPE imm
   , output DEFAULT_TYPE jmp
@@ -227,7 +224,7 @@ module update_execution_result(/*{{{*/
   , input  DEFAULT_TYPE dst
   , input  DEFAULT_TYPE a
   , output DEFAULT_TYPE next_a
-  , output DEFAULT_TYPE next_write_memory_value
+  , output DEFAULT_TYPE next_write_bus
 );
 
   always_comb begin
@@ -235,28 +232,28 @@ module update_execution_result(/*{{{*/
       unique case (decode_dst)
         REG_A: begin
           next_a = dst;
-          next_write_memory_value = `REGSIZE'b0;
+          next_write_bus = `REGSIZE'b0;
         end
 
         ADDRESS_REG_A: begin
           next_a = a;
-          next_write_memory_value = dst;
+          next_write_bus = dst;
         end
 
         ADDRESS_IMM: begin
           next_a = a;
-          next_write_memory_value = dst;
+          next_write_bus = dst;
         end
 
         default: begin
           next_a = a;
-          next_write_memory_value = `REGSIZE'b0;
+          next_write_bus = `REGSIZE'b0;
         end
       endcase
 
     end else begin
       next_a = a;
-      next_write_memory_value = `REGSIZE'b0;
+      next_write_bus = `REGSIZE'b0;
     end
   end
 
@@ -289,12 +286,12 @@ endmodule/*}}}*/
 module update_ope(/*{{{*/
   input STATE_TYPE state
   , input  DEFAULT_TYPE ope
-  , input  DEFAULT_TYPE read_memory_value
+  , input  DEFAULT_TYPE read_bus
   , output DEFAULT_TYPE next_ope
 );
   always_comb begin
     unique case (state)
-      FETCH_OPERATION: next_ope = read_memory_value;
+      FETCH_OPERATION: next_ope = read_bus;
       default:         next_ope = ope;
     endcase
   end
@@ -302,7 +299,7 @@ endmodule/*}}}*/
 
 module update_imm(/*{{{*/
   input STATE_TYPE state
-  , input  DEFAULT_TYPE read_memory_value
+  , input  DEFAULT_TYPE read_bus
   , input  DEFAULT_TYPE imm
   , input  DEFAULT_TYPE imm_src
   , input  DEFAULT_TYPE imm_dst
@@ -312,21 +309,21 @@ module update_imm(/*{{{*/
 );
   always_comb begin
     unique case (state)
-      FETCH_IMMEDIATE: next_imm = read_memory_value;
+      FETCH_IMMEDIATE: next_imm = read_bus;
       default:         next_imm = imm;
     endcase
   end
 
   always_comb begin
     unique case (state)
-      FETCH_SRC_IMM: next_imm_src = read_memory_value;
+      FETCH_SRC_IMM: next_imm_src = read_bus;
       default:       next_imm_src = imm_src;
     endcase
   end
 
   always_comb begin
     unique case (state)
-      FETCH_DST_IMM: next_imm_dst = read_memory_value;
+      FETCH_DST_IMM: next_imm_dst = read_bus;
       default:       next_imm_dst = imm_dst;
     endcase
   end
@@ -334,13 +331,13 @@ endmodule/*}}}*/
 
 module update_memory_src(/*{{{*/
   input STATE_TYPE state
-  , input  DEFAULT_TYPE read_memory_value
+  , input  DEFAULT_TYPE read_bus
   , input  DEFAULT_TYPE memory_src
   , output DEFAULT_TYPE next_memory_src
 );
   always_comb begin
     unique case (state)
-      FETCH_SRC: next_memory_src = read_memory_value;
+      FETCH_SRC: next_memory_src = read_bus;
       default:   next_memory_src = memory_src;
     endcase
   end
@@ -348,19 +345,19 @@ endmodule/*}}}*/
 
 module update_memory_dst(/*{{{*/
   input STATE_TYPE state
-  , input  DEFAULT_TYPE read_memory_value
+  , input  DEFAULT_TYPE read_bus
   , input  DEFAULT_TYPE memory_dst
   , output DEFAULT_TYPE next_memory_dst
 );
   always_comb begin
     unique case (state)
-      FETCH_DST: next_memory_dst = read_memory_value;
+      FETCH_DST: next_memory_dst = read_bus;
       default:   next_memory_dst = memory_dst;
     endcase
   end
 endmodule/*}}}*/
 
-module update_memory_address(/*{{{*/
+module update_memory_addr_bus(/*{{{*/
   input    STATE_TYPE       state
   , input  DEFAULT_TYPE     ip
   , input  OPERAND_TYPE     decode_src
@@ -368,49 +365,49 @@ module update_memory_address(/*{{{*/
   , input  DEFAULT_TYPE     imm_src
   , input  DEFAULT_TYPE     imm_dst
   , input  DEFAULT_TYPE     a
-  , output DEFAULT_TYPE     address
+  , output DEFAULT_TYPE     addr_bus
 );
   always_comb begin
     unique case (state)
-      FETCH_OPERATION: address = ip;
-      FETCH_IMMEDIATE: address = ip;
-      FETCH_SRC_IMM:   address = ip;
-      FETCH_DST_IMM:   address = ip;
+      FETCH_OPERATION: addr_bus = ip;
+      FETCH_IMMEDIATE: addr_bus = ip;
+      FETCH_SRC_IMM:   addr_bus = ip;
+      FETCH_DST_IMM:   addr_bus = ip;
 
       FETCH_SRC: unique case (decode_src)
-        ADDRESS_REG_A: address = a;
-        ADDRESS_IMM:   address = imm_src;
+        ADDRESS_REG_A: addr_bus = a;
+        ADDRESS_IMM:   addr_bus = imm_src;
       endcase
 
       FETCH_DST: unique case (decode_dst)
-        ADDRESS_REG_A: address = a;
-        ADDRESS_IMM:   address = imm_dst;
+        ADDRESS_REG_A: addr_bus = a;
+        ADDRESS_IMM:   addr_bus = imm_dst;
       endcase
 
       WRITE_MEMORY: unique case (decode_dst)
-        ADDRESS_REG_A: address = a;
-        ADDRESS_IMM:   address = imm_dst;
+        ADDRESS_REG_A: addr_bus = a;
+        ADDRESS_IMM:   addr_bus = imm_dst;
       endcase
 
-      default:         address = `REGSIZE'd0;
+      default:         addr_bus = `REGSIZE'd0;
     endcase
   end
 endmodule/*}}}*/
 
 module update_memory_flag(/*{{{*/
   input    STATE_TYPE       state
-  , output MEMORY_FLAG_TYPE rw_flag
+  , output MEMORY_FLAG_TYPE ctrl_bus
 );
   always_comb begin
     unique case (state)
-      FETCH_OPERATION: rw_flag = MEMORY_READ;
-      FETCH_IMMEDIATE: rw_flag = MEMORY_READ;
-      FETCH_SRC_IMM:   rw_flag = MEMORY_READ;
-      FETCH_SRC:       rw_flag = MEMORY_READ;
-      FETCH_DST_IMM:   rw_flag = MEMORY_READ;
-      FETCH_DST:       rw_flag = MEMORY_READ;
-      WRITE_MEMORY:    rw_flag = MEMORY_WRITE;
-      default:         rw_flag = MEMORY_STAY;
+      FETCH_OPERATION: ctrl_bus = MEMORY_READ;
+      FETCH_IMMEDIATE: ctrl_bus = MEMORY_READ;
+      FETCH_SRC_IMM:   ctrl_bus = MEMORY_READ;
+      FETCH_SRC:       ctrl_bus = MEMORY_READ;
+      FETCH_DST_IMM:   ctrl_bus = MEMORY_READ;
+      FETCH_DST:       ctrl_bus = MEMORY_READ;
+      WRITE_MEMORY:    ctrl_bus = MEMORY_WRITE;
+      default:         ctrl_bus = MEMORY_STAY;
     endcase
   end
 endmodule/*}}}*/
@@ -430,7 +427,7 @@ module clock_posedge(/*{{{*/
   , input  DEFAULT_TYPE next_a
   , input  DEFAULT_TYPE next_dst
   , input  DEFAULT_TYPE next_original_dst
-  , input  DEFAULT_TYPE next_write_memory_value
+  , input  DEFAULT_TYPE next_write_bus
 
   , output STATE_TYPE   state
   , output DEFAULT_TYPE ip
@@ -443,7 +440,7 @@ module clock_posedge(/*{{{*/
   , output DEFAULT_TYPE a
   , output DEFAULT_TYPE dst
   , output DEFAULT_TYPE original_dst
-  , output DEFAULT_TYPE write_memory_value
+  , output DEFAULT_TYPE write_bus
 
 );
   always_ff @(posedge CLOCK) begin
@@ -459,7 +456,7 @@ module clock_posedge(/*{{{*/
       a            <= `REGSIZE'b0;
       dst          <= `REGSIZE'b0;
       original_dst <= `REGSIZE'b0;
-      write_memory_value <= `REGSIZE'b0;
+      write_bus    <= `REGSIZE'b0;
 
     end else begin
       state        <= next_state;
@@ -473,7 +470,7 @@ module clock_posedge(/*{{{*/
       a            <= next_a;
       dst          <= next_dst;
       original_dst <= next_original_dst;
-      write_memory_value <= next_write_memory_value;
+      write_bus    <= next_write_bus;
     end
   end
 endmodule/*}}}*/

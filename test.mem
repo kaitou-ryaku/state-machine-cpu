@@ -1,7 +1,9 @@
 00000011 // mov a, imm
 00000111 // imm=7
+00001000 // mov [imm], a
+00001111 // imm=15 // OUT
 00010011 // add a, imm
 00000001 // imm=1
 11000000 // jmp imm
-11111100 // imm=-4 (goto ```add a, imm```)
+11111010 // imm=-6 (goto ```mov [imm], a```)
 11111111 // hlt

@@ -3,10 +3,10 @@
 //module test_memory_unit();
 //  logic            CLOCK;
 //  logic            RESET;
-//  MEMORY_FLAG_TYPE rw_flag;
-//  DEFAULT_TYPE     address;
-//  DEFAULT_TYPE     write_memory_value;
-//  DEFAULT_TYPE     read_memory_value;
+//  MEMORY_FLAG_TYPE ctrl_bus;
+//  DEFAULT_TYPE     addr_bus;
+//  DEFAULT_TYPE     write_bus;
+//  DEFAULT_TYPE     read_bus;
 //
 //  memory_unit memory_unit0(.*);
 //
@@ -33,10 +33,12 @@
 //endmodule
 
 module test_cpu();
-  logic CLOCK;
-  logic RESET;
+  logic CLOCK, RESET;
   logic [`REGSIZE-1:0] OUT;
+  DEFAULT_TYPE addr_bus, read_bus, write_bus;
+  MEMORY_FLAG_TYPE ctrl_bus;
 
+  memory_unit memory_unit0(.*);
   cpu cpu_0(.*);
 
   initial begin
