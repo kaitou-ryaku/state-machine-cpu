@@ -6,8 +6,8 @@ module cpu(/*{{{*/
   , output DEFAULT_TYPE OUT
 );
 
-  DEFAULT_TYPE address, next_address, read_memory_value;
-  MEMORY_FLAG_TYPE rw_flag, next_rw_flag;
+  DEFAULT_TYPE address, read_memory_value;
+  MEMORY_FLAG_TYPE rw_flag;
   DEFAULT_TYPE write_memory_value, next_write_memory_value;
   memory_unit memory_unit0(.*);
 
@@ -41,6 +41,7 @@ module cpu(/*{{{*/
 
   update_memory_address update_memory_address0(.*);
   update_memory_flag update_memory_flag0(.*);
+
   update_state update_state0(.*);
   update_execution_result update_execution_result0(.*);
   update_ip  update_ip0(.*);
@@ -51,7 +52,6 @@ module cpu(/*{{{*/
   update_imm update_imm0(.*);
 
   clock_posedge clock_posedge0(.*);
-  clock_posedge_memory_parameter clock_posedge_memory_parameter0(.*);
 
   assign OUT = a;
 
@@ -183,14 +183,7 @@ module update_state(/*{{{*/
     unique case (state)
       RESET_STATE: next_state = FETCH_OPERATION;
 
-      FETCH_OPERATION: next_state = COPY_OPERATION;
-      COPY_OPERATION:  next_state = DECODE;
-
-      FETCH_IMMEDIATE: next_state = COPY_IMMEDIATE;
-      FETCH_SRC_IMM:   next_state = COPY_SRC_IMM;
-      FETCH_SRC:       next_state = COPY_SRC;
-      FETCH_DST_IMM:   next_state = COPY_DST_IMM;
-      FETCH_DST:       next_state = COPY_DST;
+      FETCH_OPERATION: next_state = DECODE;
 
       DECODE: begin
         if      (decode_src == IMM)           next_state = FETCH_IMMEDIATE;
@@ -201,17 +194,17 @@ module update_state(/*{{{*/
         else                                  next_state = EXECUTE;
       end
 
-      COPY_SRC_IMM: next_state = FETCH_SRC;
+      FETCH_SRC_IMM: next_state = FETCH_SRC;
 
-      COPY_SRC, COPY_IMMEDIATE: begin
+      FETCH_SRC, FETCH_IMMEDIATE: begin
         if      (decode_dst == ADDRESS_IMM)   next_state = FETCH_DST_IMM;
         else if (decode_dst == ADDRESS_REG_A) next_state = FETCH_DST;
         else                                  next_state = EXECUTE;
       end
 
-      COPY_DST_IMM: next_state = FETCH_DST;
+      FETCH_DST_IMM: next_state = FETCH_DST;
 
-      COPY_DST: next_state = EXECUTE;
+      FETCH_DST: next_state = EXECUTE;
 
       EXECUTE: next_state = WRITE_REGISTER;
 
@@ -301,8 +294,8 @@ module update_ope(/*{{{*/
 );
   always_comb begin
     unique case (state)
-      COPY_OPERATION: next_ope = read_memory_value;
-      default:        next_ope = ope;
+      FETCH_OPERATION: next_ope = read_memory_value;
+      default:         next_ope = ope;
     endcase
   end
 endmodule/*}}}*/
@@ -319,22 +312,22 @@ module update_imm(/*{{{*/
 );
   always_comb begin
     unique case (state)
-      COPY_IMMEDIATE: next_imm = read_memory_value;
-      default:        next_imm = imm;
+      FETCH_IMMEDIATE: next_imm = read_memory_value;
+      default:         next_imm = imm;
     endcase
   end
 
   always_comb begin
     unique case (state)
-      COPY_SRC_IMM: next_imm_src = read_memory_value;
-      default:      next_imm_src = imm_src;
+      FETCH_SRC_IMM: next_imm_src = read_memory_value;
+      default:       next_imm_src = imm_src;
     endcase
   end
 
   always_comb begin
     unique case (state)
-      COPY_DST_IMM: next_imm_dst = read_memory_value;
-      default:      next_imm_dst = imm_dst;
+      FETCH_DST_IMM: next_imm_dst = read_memory_value;
+      default:       next_imm_dst = imm_dst;
     endcase
   end
 endmodule/*}}}*/
@@ -347,8 +340,8 @@ module update_memory_src(/*{{{*/
 );
   always_comb begin
     unique case (state)
-      COPY_SRC: next_memory_src = read_memory_value;
-      default:  next_memory_src = memory_src;
+      FETCH_SRC: next_memory_src = read_memory_value;
+      default:   next_memory_src = memory_src;
     endcase
   end
 endmodule/*}}}*/
@@ -361,8 +354,8 @@ module update_memory_dst(/*{{{*/
 );
   always_comb begin
     unique case (state)
-      COPY_DST: next_memory_dst = read_memory_value;
-      default:  next_memory_dst = memory_dst;
+      FETCH_DST: next_memory_dst = read_memory_value;
+      default:   next_memory_dst = memory_dst;
     endcase
   end
 endmodule/*}}}*/
@@ -375,51 +368,49 @@ module update_memory_address(/*{{{*/
   , input  DEFAULT_TYPE     imm_src
   , input  DEFAULT_TYPE     imm_dst
   , input  DEFAULT_TYPE     a
-  , input  DEFAULT_TYPE     address
-  , output DEFAULT_TYPE     next_address
+  , output DEFAULT_TYPE     address
 );
   always_comb begin
     unique case (state)
-      FETCH_OPERATION: next_address = ip;
-      FETCH_IMMEDIATE: next_address = ip;
-      FETCH_SRC_IMM:   next_address = ip;
-      FETCH_DST_IMM:   next_address = ip;
+      FETCH_OPERATION: address = ip;
+      FETCH_IMMEDIATE: address = ip;
+      FETCH_SRC_IMM:   address = ip;
+      FETCH_DST_IMM:   address = ip;
 
       FETCH_SRC: unique case (decode_src)
-        ADDRESS_REG_A: next_address = a;
-        ADDRESS_IMM:   next_address = imm_src;
+        ADDRESS_REG_A: address = a;
+        ADDRESS_IMM:   address = imm_src;
       endcase
 
       FETCH_DST: unique case (decode_dst)
-        ADDRESS_REG_A: next_address = a;
-        ADDRESS_IMM:   next_address = imm_dst;
+        ADDRESS_REG_A: address = a;
+        ADDRESS_IMM:   address = imm_dst;
       endcase
 
       WRITE_MEMORY: unique case (decode_dst)
-        ADDRESS_REG_A: next_address = a;
-        ADDRESS_IMM:   next_address = imm_dst;
+        ADDRESS_REG_A: address = a;
+        ADDRESS_IMM:   address = imm_dst;
       endcase
 
-      default:         next_address = address;
+      default:         address = `REGSIZE'd0;
     endcase
   end
 endmodule/*}}}*/
 
 module update_memory_flag(/*{{{*/
   input    STATE_TYPE       state
-  , input  MEMORY_FLAG_TYPE rw_flag
-  , output MEMORY_FLAG_TYPE next_rw_flag
+  , output MEMORY_FLAG_TYPE rw_flag
 );
   always_comb begin
     unique case (state)
-      FETCH_OPERATION: next_rw_flag = MEMORY_READ;
-      FETCH_IMMEDIATE: next_rw_flag = MEMORY_READ;
-      FETCH_SRC_IMM:   next_rw_flag = MEMORY_READ;
-      FETCH_SRC:       next_rw_flag = MEMORY_READ;
-      FETCH_DST_IMM:   next_rw_flag = MEMORY_READ;
-      FETCH_DST:       next_rw_flag = MEMORY_READ;
-      WRITE_MEMORY:    next_rw_flag = MEMORY_WRITE;
-      default:         next_rw_flag = MEMORY_STAY;
+      FETCH_OPERATION: rw_flag = MEMORY_READ;
+      FETCH_IMMEDIATE: rw_flag = MEMORY_READ;
+      FETCH_SRC_IMM:   rw_flag = MEMORY_READ;
+      FETCH_SRC:       rw_flag = MEMORY_READ;
+      FETCH_DST_IMM:   rw_flag = MEMORY_READ;
+      FETCH_DST:       rw_flag = MEMORY_READ;
+      WRITE_MEMORY:    rw_flag = MEMORY_WRITE;
+      default:         rw_flag = MEMORY_STAY;
     endcase
   end
 endmodule/*}}}*/
@@ -439,6 +430,7 @@ module clock_posedge(/*{{{*/
   , input  DEFAULT_TYPE next_a
   , input  DEFAULT_TYPE next_dst
   , input  DEFAULT_TYPE next_original_dst
+  , input  DEFAULT_TYPE next_write_memory_value
 
   , output STATE_TYPE   state
   , output DEFAULT_TYPE ip
@@ -451,6 +443,7 @@ module clock_posedge(/*{{{*/
   , output DEFAULT_TYPE a
   , output DEFAULT_TYPE dst
   , output DEFAULT_TYPE original_dst
+  , output DEFAULT_TYPE write_memory_value
 
 );
   always_ff @(posedge CLOCK) begin
@@ -466,6 +459,7 @@ module clock_posedge(/*{{{*/
       a            <= `REGSIZE'b0;
       dst          <= `REGSIZE'b0;
       original_dst <= `REGSIZE'b0;
+      write_memory_value <= `REGSIZE'b0;
 
     end else begin
       state        <= next_state;
@@ -479,32 +473,7 @@ module clock_posedge(/*{{{*/
       a            <= next_a;
       dst          <= next_dst;
       original_dst <= next_original_dst;
-    end
-  end
-endmodule/*}}}*/
-
-module clock_posedge_memory_parameter(/*{{{*/
-  input logic CLOCK
-  , input logic RESET
-
-  , input  DEFAULT_TYPE     next_address
-  , input  DEFAULT_TYPE     next_write_memory_value
-  , input  MEMORY_FLAG_TYPE next_rw_flag
-
-  , output DEFAULT_TYPE     address
-  , output DEFAULT_TYPE     write_memory_value
-  , output MEMORY_FLAG_TYPE rw_flag
-);
-  always_ff @(posedge CLOCK) begin
-    unique if (RESET) begin
-      address            = `REGSIZE'b0;
-      write_memory_value = `REGSIZE'b0;
-      rw_flag            = MEMORY_STAY;
-
-    end else begin
-      address            = next_address;
-      write_memory_value = next_write_memory_value;
-      rw_flag            = next_rw_flag;
+      write_memory_value <= next_write_memory_value;
     end
   end
 endmodule/*}}}*/
