@@ -6,19 +6,23 @@
 
 typedef logic [`REGSIZE-1:0] DEFAULT_TYPE;
 
-typedef enum logic [2:0] {
+typedef enum logic [3:0] {
   FETCH_OPERATION
   , COPY_OPERATION
   , DECODE
   , FETCH_IMMEDIATE
   , COPY_IMMEDIATE
+  , FETCH_SRC
+  , COPY_SRC
+  , FETCH_DST
+  , COPY_DST
   , EXECUTE
   , WRITE
 } STATE_TYPE;
 
 typedef enum logic [3:0] {ADD, MOV, HLT, JMP} OPECODE_TYPE;
 
-typedef enum logic [1:0] {REG_A, REG_B, REG_C, IMM} OPERAND_TYPE;
+typedef enum logic [2:0] {REG_A, ADDRESS_REG_A, ADDRESS_IMM, IMM, UNUSED} OPERAND_TYPE;
 
 typedef enum logic [3:0] {MEMORY_STAY, MEMORY_READ, MEMORY_WRITE} MEMORY_FLAG_TYPE;
 

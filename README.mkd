@@ -13,12 +13,19 @@ HDL codes are written in System Verilog.
 |jmp imm  |1100 ?? ??|16   |           |
 |hlt      |1111 ?? ??|8    |stop       |
 
-|x,y     |binary|
+|x       |binary|
 |:-------|:-----|
-|reg a   |00    |
-|reg b   |01    |
-|reg c   |10    |
+|a       |00    |
+|[a]     |01    |
+|[imm]   |10    |
 |imm     |11    |
+
+|y       |binary|
+|:-------|:-----|
+|a       |00    |
+|[a]     |01    |
+|[imm]   |10    |
+|UNUSED  |11    |
 
 ### Vivado
 
