@@ -7,7 +7,8 @@
 typedef logic [`REGSIZE-1:0] DEFAULT_TYPE;
 
 typedef enum logic [3:0] {
-  FETCH_OPERATION
+  RESET_STATE
+  , FETCH_OPERATION
   , COPY_OPERATION
   , DECODE
   , FETCH_IMMEDIATE

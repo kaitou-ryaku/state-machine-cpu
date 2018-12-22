@@ -6,7 +6,7 @@ module cpu(/*{{{*/
   , output DEFAULT_TYPE OUT
 );
 
-  DEFAULT_TYPE address, read_memory_value;
+  DEFAULT_TYPE address, next_address, read_memory_value;
   MEMORY_FLAG_TYPE rw_flag, next_rw_flag;
   DEFAULT_TYPE write_memory_value, next_write_memory_value;
   memory_unit memory_unit0(.*);
@@ -172,6 +172,8 @@ module update_state(/*{{{*/
 
   always_comb begin
     unique case (state)
+      RESET_STATE: next_state = FETCH_OPERATION;
+
       FETCH_OPERATION: next_state = COPY_OPERATION;
       COPY_OPERATION:  next_state = DECODE;
 
@@ -285,8 +287,8 @@ module update_ope(/*{{{*/
 );
   always_comb begin
     unique case (state)
-      FETCH_OPERATION: next_ope = read_memory_value;
-      default:         next_ope = ope;
+      COPY_OPERATION: next_ope = read_memory_value;
+      default:        next_ope = ope;
     endcase
   end
 endmodule/*}}}*/
@@ -307,13 +309,13 @@ endmodule/*}}}*/
 
 module update_memory_src(/*{{{*/
   input STATE_TYPE state
-  , input  DEFAULT_TYPE imm
+  , input  DEFAULT_TYPE read_memory_value
   , input  DEFAULT_TYPE memory_src
   , output DEFAULT_TYPE next_memory_src
 );
   always_comb begin
     unique case (state)
-      COPY_SRC: next_memory_src = imm;
+      COPY_SRC: next_memory_src = read_memory_value;
       default:  next_memory_src = memory_src;
     endcase
   end
@@ -321,13 +323,13 @@ endmodule/*}}}*/
 
 module update_memory_dst(/*{{{*/
   input STATE_TYPE state
-  , input  DEFAULT_TYPE imm
+  , input  DEFAULT_TYPE read_memory_value
   , input  DEFAULT_TYPE memory_dst
   , output DEFAULT_TYPE next_memory_dst
 );
   always_comb begin
     unique case (state)
-      COPY_DST: next_memory_dst = imm;
+      COPY_DST: next_memory_dst = read_memory_value;
       default:  next_memory_dst = memory_dst;
     endcase
   end
@@ -340,24 +342,24 @@ module update_memory_address(/*{{{*/
   , input  OPERAND_TYPE     decode_dst
   , input  DEFAULT_TYPE     imm
   , input  DEFAULT_TYPE     a
-  , output DEFAULT_TYPE     address
+  , output DEFAULT_TYPE     next_address
 );
   always_comb begin
     unique case (state)
-      FETCH_OPERATION: address = ip;
-      FETCH_IMMEDIATE: address = ip;
+      FETCH_OPERATION: next_address = ip;
+      FETCH_IMMEDIATE: next_address = ip;
 
       FETCH_SRC: unique case (decode_src)
-        ADDRESS_REG_A: address = a;
-        ADDRESS_IMM:   address = imm;
+        ADDRESS_REG_A: next_address = a;
+        ADDRESS_IMM:   next_address = imm;
       endcase
 
       WRITE: unique case (decode_dst)
-        ADDRESS_REG_A: address = a;
-        ADDRESS_IMM:   address = imm;
+        ADDRESS_REG_A: next_address = a;
+        ADDRESS_IMM:   next_address = imm;
       endcase
 
-      default:         address = `REGSIZE'd0;
+      default:         next_address = `REGSIZE'd0;
     endcase
   end
 endmodule/*}}}*/
@@ -407,7 +409,7 @@ module clock_posedge(/*{{{*/
 );
   always_ff @(posedge CLOCK) begin
     unique if (RESET) begin
-      state        <= FETCH_OPERATION;
+      state        <= RESET_STATE;
       ip           <= `REGSIZE'b0;
       ope          <= `REGSIZE'b0;
       imm          <= `REGSIZE'b0;
@@ -437,18 +439,22 @@ module clock_posedge_memory_parameter(/*{{{*/
   input logic CLOCK
   , input logic RESET
 
+  , input  DEFAULT_TYPE     next_address
   , input  DEFAULT_TYPE     next_write_memory_value
   , input  MEMORY_FLAG_TYPE next_rw_flag
 
+  , output DEFAULT_TYPE     address
   , output DEFAULT_TYPE     write_memory_value
   , output MEMORY_FLAG_TYPE rw_flag
 );
   always_ff @(posedge CLOCK) begin
     unique if (RESET) begin
+      address            = `REGSIZE'b0;
       write_memory_value = `REGSIZE'b0;
       rw_flag            = MEMORY_STAY;
 
     end else begin
+      address            = next_address;
       write_memory_value = next_write_memory_value;
       rw_flag            = next_rw_flag;
     end
