@@ -24,7 +24,7 @@ module cpu(/*{{{*/
   DEFAULT_TYPE memory_src, next_memory_src;
   DEFAULT_TYPE memory_dst, next_memory_dst;
 
-  DEFAULT_TYPE src, next_src;
+  DEFAULT_TYPE src;
   decoder_src decoder_src0(.*);
 
   DEFAULT_TYPE original_dst, next_original_dst;
@@ -96,16 +96,16 @@ module decoder_src(/*{{{*/
   , input DEFAULT_TYPE a
   , input DEFAULT_TYPE imm
   , input DEFAULT_TYPE memory_src
-  , output DEFAULT_TYPE next_src
+  , output DEFAULT_TYPE src
 );
 
   always_comb begin
     unique case (decode_src)
-      REG_A:         next_src = a;
-      ADDRESS_REG_A: next_src = memory_src;
-      ADDRESS_IMM:   next_src = memory_src;
-      IMM:           next_src = imm;
-      default:       next_src = `REGSIZE'd0;
+      REG_A:         src = a;
+      ADDRESS_REG_A: src = memory_src;
+      ADDRESS_IMM:   src = memory_src;
+      IMM:           src = imm;
+      default:       src = `REGSIZE'd0;
     endcase
   end
 
@@ -131,17 +131,24 @@ module decoder_dst(/*{{{*/
 endmodule/*}}}*/
 
 module alu(/*{{{*/
-  input OPECODE_TYPE decode_ope
+  input STATE_TYPE state
+  , input OPECODE_TYPE decode_ope
   , input  DEFAULT_TYPE src
   , input  DEFAULT_TYPE original_dst
   , output DEFAULT_TYPE next_dst
 );
 
   always_comb begin
-    unique case (decode_ope)
-      ADD:     next_dst = original_dst+src;
-      MOV:     next_dst = src;
-      HLT:     next_dst = original_dst;
+    unique case (state)
+      EXECUTE: begin
+        unique case (decode_ope)
+          ADD:     next_dst = original_dst+src;
+          MOV:     next_dst = src;
+          HLT:     next_dst = original_dst;
+          default: next_dst = original_dst;
+        endcase
+      end
+
       default: next_dst = original_dst;
     endcase
   end
@@ -203,12 +210,14 @@ module update_state(/*{{{*/
 
       COPY_DST: next_state = EXECUTE;
 
-      EXECUTE: begin
-        if   (decode_dst == ADDRESS_IMM) next_state = WRITE;
+      EXECUTE: next_state = WRITE_REGISTER;
+
+      WRITE_REGISTER: begin
+        if   (decode_dst == ADDRESS_IMM) next_state = WRITE_MEMORY;
         else                             next_state = FETCH_OPERATION;
       end
 
-      WRITE:   next_state = FETCH_OPERATION;
+      WRITE_MEMORY: next_state = FETCH_OPERATION;
 
       default: next_state = FETCH_OPERATION;
     endcase
@@ -226,7 +235,7 @@ module update_execution_result(/*{{{*/
 );
 
   always_comb begin
-    if (state == EXECUTE) begin
+    if (state == WRITE_REGISTER) begin
       unique case (decode_dst)
         REG_A: begin
           next_a = dst;
@@ -354,7 +363,7 @@ module update_memory_address(/*{{{*/
         ADDRESS_IMM:   next_address = imm;
       endcase
 
-      WRITE: unique case (decode_dst)
+      WRITE_MEMORY: unique case (decode_dst)
         ADDRESS_REG_A: next_address = a;
         ADDRESS_IMM:   next_address = imm;
       endcase
@@ -374,7 +383,7 @@ module update_memory_flag(/*{{{*/
       FETCH_OPERATION: next_rw_flag = MEMORY_READ;
       FETCH_IMMEDIATE: next_rw_flag = MEMORY_READ;
       FETCH_SRC:       next_rw_flag = MEMORY_READ;
-      WRITE:           next_rw_flag = MEMORY_WRITE;
+      WRITE_MEMORY:    next_rw_flag = MEMORY_WRITE;
       default:         next_rw_flag = MEMORY_STAY;
     endcase
   end
@@ -391,7 +400,6 @@ module clock_posedge(/*{{{*/
   , input  DEFAULT_TYPE next_memory_src
   , input  DEFAULT_TYPE next_memory_dst
   , input  DEFAULT_TYPE next_a
-  , input  DEFAULT_TYPE next_src
   , input  DEFAULT_TYPE next_dst
   , input  DEFAULT_TYPE next_original_dst
 
@@ -402,7 +410,6 @@ module clock_posedge(/*{{{*/
   , output DEFAULT_TYPE memory_src
   , output DEFAULT_TYPE memory_dst
   , output DEFAULT_TYPE a
-  , output DEFAULT_TYPE src
   , output DEFAULT_TYPE dst
   , output DEFAULT_TYPE original_dst
 
@@ -416,7 +423,6 @@ module clock_posedge(/*{{{*/
       memory_src   <= `REGSIZE'b0;
       memory_dst   <= `REGSIZE'b0;
       a            <= `REGSIZE'b0;
-      src          <= `REGSIZE'b0;
       dst          <= `REGSIZE'b0;
       original_dst <= `REGSIZE'b0;
 
@@ -428,7 +434,6 @@ module clock_posedge(/*{{{*/
       memory_src   <= next_memory_src;
       memory_dst   <= next_memory_dst;
       a            <= next_a;
-      src          <= next_src;
       dst          <= next_dst;
       original_dst <= next_original_dst;
     end

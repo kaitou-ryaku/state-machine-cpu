@@ -18,7 +18,8 @@ typedef enum logic [3:0] {
   , FETCH_DST
   , COPY_DST
   , EXECUTE
-  , WRITE
+  , WRITE_REGISTER
+  , WRITE_MEMORY
 } STATE_TYPE;
 
 typedef enum logic [3:0] {ADD, MOV, HLT, JMP} OPECODE_TYPE;
