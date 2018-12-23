@@ -27,10 +27,7 @@ module top(/*{{{*/
   assign RESET = ~PHYSICAL_RESET;
   logic [`REGSIZE-1:0] OUT;
 
-  DEFAULT_TYPE addr_bus, read_bus, write_bus;
-  MEMORY_FLAG_TYPE ctrl_bus;
-  memory_unit memory_unit0(.*);
-  cpu cpu0(.*);
+  chipset chipset0(.*);
 
   logic flag;
   clock_up_check clock_up_check0(
