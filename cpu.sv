@@ -18,7 +18,7 @@ module cpu(/*{{{*/
   OPERAND_TYPE decode_src, decode_dst;
   decoder decoder0(.*);
 
-  DEFAULT_TYPE a, next_a;
+  DEFAULT_TYPE register_a, next_register_a;
   DEFAULT_TYPE imm, next_imm;
   DEFAULT_TYPE imm_src, next_imm_src;
   DEFAULT_TYPE imm_dst, next_imm_dst;
@@ -92,7 +92,7 @@ endmodule/*}}}*/
 
 module decoder_src(/*{{{*/
   input OPERAND_TYPE decode_src
-  , input DEFAULT_TYPE a
+  , input DEFAULT_TYPE register_a
   , input DEFAULT_TYPE imm
   , input DEFAULT_TYPE memory_src
   , output DEFAULT_TYPE src
@@ -100,7 +100,7 @@ module decoder_src(/*{{{*/
 
   always_comb begin
     unique case (decode_src)
-      REG_A:         src = a;
+      REG_A:         src = register_a;
       ADDRESS_REG_A: src = memory_src;
       ADDRESS_IMM:   src = memory_src;
       IMM:           src = imm;
@@ -112,7 +112,7 @@ endmodule/*}}}*/
 
 module decoder_dst(/*{{{*/
   input OPERAND_TYPE decode_dst
-  , input DEFAULT_TYPE a
+  , input DEFAULT_TYPE register_a
   , input DEFAULT_TYPE imm
   , input DEFAULT_TYPE memory_dst
   , output DEFAULT_TYPE next_original_dst
@@ -120,7 +120,7 @@ module decoder_dst(/*{{{*/
 
   always_comb begin
     unique case (decode_dst)
-      REG_A:         next_original_dst = a;
+      REG_A:         next_original_dst = register_a;
       ADDRESS_REG_A: next_original_dst = memory_dst;
       ADDRESS_IMM:   next_original_dst = memory_dst;
       default:       next_original_dst = `REGSIZE'd0;
@@ -222,8 +222,8 @@ module update_execution_result(/*{{{*/
   input STATE_TYPE state
   , input OPERAND_TYPE decode_dst
   , input  DEFAULT_TYPE dst
-  , input  DEFAULT_TYPE a
-  , output DEFAULT_TYPE next_a
+  , input  DEFAULT_TYPE register_a
+  , output DEFAULT_TYPE next_register_a
   , output DEFAULT_TYPE next_write_bus
 );
 
@@ -231,28 +231,28 @@ module update_execution_result(/*{{{*/
     if (state == WRITE_REGISTER) begin
       unique case (decode_dst)
         REG_A: begin
-          next_a = dst;
+          next_register_a = dst;
           next_write_bus = `REGSIZE'b0;
         end
 
         ADDRESS_REG_A: begin
-          next_a = a;
+          next_register_a = register_a;
           next_write_bus = dst;
         end
 
         ADDRESS_IMM: begin
-          next_a = a;
+          next_register_a = register_a;
           next_write_bus = dst;
         end
 
         default: begin
-          next_a = a;
+          next_register_a = register_a;
           next_write_bus = `REGSIZE'b0;
         end
       endcase
 
     end else begin
-      next_a = a;
+      next_register_a = register_a;
       next_write_bus = `REGSIZE'b0;
     end
   end
@@ -364,7 +364,7 @@ module update_memory_addr_bus(/*{{{*/
   , input  OPERAND_TYPE     decode_dst
   , input  DEFAULT_TYPE     imm_src
   , input  DEFAULT_TYPE     imm_dst
-  , input  DEFAULT_TYPE     a
+  , input  DEFAULT_TYPE     register_a
   , output DEFAULT_TYPE     addr_bus
 );
   always_comb begin
@@ -375,17 +375,17 @@ module update_memory_addr_bus(/*{{{*/
       FETCH_DST_IMM:   addr_bus = ip;
 
       FETCH_SRC: unique case (decode_src)
-        ADDRESS_REG_A: addr_bus = a;
+        ADDRESS_REG_A: addr_bus = register_a;
         ADDRESS_IMM:   addr_bus = imm_src;
       endcase
 
       FETCH_DST: unique case (decode_dst)
-        ADDRESS_REG_A: addr_bus = a;
+        ADDRESS_REG_A: addr_bus = register_a;
         ADDRESS_IMM:   addr_bus = imm_dst;
       endcase
 
       WRITE_MEMORY: unique case (decode_dst)
-        ADDRESS_REG_A: addr_bus = a;
+        ADDRESS_REG_A: addr_bus = register_a;
         ADDRESS_IMM:   addr_bus = imm_dst;
       endcase
 
@@ -424,7 +424,7 @@ module clock_posedge(/*{{{*/
   , input  DEFAULT_TYPE next_imm_dst
   , input  DEFAULT_TYPE next_memory_src
   , input  DEFAULT_TYPE next_memory_dst
-  , input  DEFAULT_TYPE next_a
+  , input  DEFAULT_TYPE next_register_a
   , input  DEFAULT_TYPE next_dst
   , input  DEFAULT_TYPE next_original_dst
   , input  DEFAULT_TYPE next_write_bus
@@ -437,7 +437,7 @@ module clock_posedge(/*{{{*/
   , output DEFAULT_TYPE imm_dst
   , output DEFAULT_TYPE memory_src
   , output DEFAULT_TYPE memory_dst
-  , output DEFAULT_TYPE a
+  , output DEFAULT_TYPE register_a
   , output DEFAULT_TYPE dst
   , output DEFAULT_TYPE original_dst
   , output DEFAULT_TYPE write_bus
@@ -453,7 +453,7 @@ module clock_posedge(/*{{{*/
       imm_dst      <= `REGSIZE'b0;
       memory_src   <= `REGSIZE'b0;
       memory_dst   <= `REGSIZE'b0;
-      a            <= `REGSIZE'b0;
+      register_a   <= `REGSIZE'b0;
       dst          <= `REGSIZE'b0;
       original_dst <= `REGSIZE'b0;
       write_bus    <= `REGSIZE'b0;
@@ -467,7 +467,7 @@ module clock_posedge(/*{{{*/
       imm_dst      <= next_imm_dst;
       memory_src   <= next_memory_src;
       memory_dst   <= next_memory_dst;
-      a            <= next_a;
+      register_a   <= next_register_a;
       dst          <= next_dst;
       original_dst <= next_original_dst;
       write_bus    <= next_write_bus;
