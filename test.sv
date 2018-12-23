@@ -35,25 +35,25 @@
 module test_cpu();
   logic CLOCK, RESET;
   logic [`REGSIZE-1:0] OUT;
-  DEFAULT_TYPE addr_bus, read_bus, write_bus;
-  MEMORY_FLAG_TYPE ctrl_bus;
 
-  memory_unit memory_unit0(.*);
-  cpu cpu_0(.*);
+  chipset chipset0(.*);
 
   always #5 CLOCK++;
 
   initial begin
-
     CLOCK = 1'b0;
+
     RESET = 1'b1;
-    # 5;
-    # 1;
+    # 11;
     RESET = 1'b0;
 
-    #8;
+    #400;
 
-    #20;
+    RESET = 1'b1;
+    # 11;
+    RESET = 1'b0;
+
+    #400;
     $stop;
   end
 

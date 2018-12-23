@@ -2,6 +2,7 @@
 
 module memory_unit(
   input    logic            CLOCK
+  , input  logic            RESET
   , input  MEMORY_FLAG_TYPE ctrl_bus
   , input  DEFAULT_TYPE     addr_bus
   , input  DEFAULT_TYPE     write_bus
