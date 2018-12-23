@@ -41,16 +41,11 @@ module test_cpu();
   memory_unit memory_unit0(.*);
   cpu cpu_0(.*);
 
+  always #5 CLOCK++;
+
   initial begin
+
     CLOCK = 1'b0;
-    forever begin
-      #5;
-      CLOCK = ~ CLOCK;
-    end
-  end
-
-  initial begin
-
     RESET = 1'b1;
     # 5;
     # 1;
@@ -60,7 +55,7 @@ module test_cpu();
 
     #20;
     $stop;
-  end/*}}}*/
+  end
 
 endmodule
 

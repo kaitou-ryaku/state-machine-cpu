@@ -7,6 +7,7 @@ module cpu(/*{{{*/
   , output MEMORY_FLAG_TYPE ctrl_bus
   , output DEFAULT_TYPE     addr_bus
   , output DEFAULT_TYPE     write_bus
+  , output DEFAULT_TYPE     OUT
 );
   DEFAULT_TYPE next_write_bus;
 
@@ -52,6 +53,7 @@ module cpu(/*{{{*/
 
   clock_posedge clock_posedge0(.*);
 
+  assign OUT = register_a;
 endmodule/*}}}*/
 
 module decoder(/*{{{*/
