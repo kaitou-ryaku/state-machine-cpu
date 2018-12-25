@@ -51,7 +51,7 @@ module cpu(/*{{{*/
   update_memory_dst update_memory_dst(.*);
 
   DEFAULT_TYPE next_ip_operation;
-  update_stage_operation update_stage_operation0(.*, .next_ip(next_ip_operation));
+  update_stage_fetch_operation update_stage_fetch_operation0(.*, .next_ip(next_ip_operation));
   update_ip  update_ip0(.*);
 
   update_imm update_imm0(.*);
@@ -180,6 +180,7 @@ endmodule/*}}}*/
 module update_stage(/*{{{*/
   input STAGE_TYPE stage
   , input STAGE_FETCH_OPERATION_TYPE stage_fetch_operation
+  , input STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate
   , input OPERAND_TYPE decode_src
   , input OPERAND_TYPE decode_dst
   , output STAGE_TYPE next_stage
@@ -189,38 +190,24 @@ module update_stage(/*{{{*/
     unique case (stage)
       RESET_STAGE: next_stage = FETCH_OPERATION;
 
-      FETCH_OPERATION: begin
-        if (stage_fetch_operation == END_FETCH_OPERATION) next_stage = DECODE;
-        else next_stage = FETCH_OPERATION;
-      end
+      FETCH_OPERATION: unique case (stage_fetch_operation)
+        END_FETCH_OPERATION: next_stage = DECODE;
+        default:             next_stage = FETCH_OPERATION;
+      endcase
 
-      DECODE: begin
-        if      (decode_src == IMM)           next_stage = FETCH_IMMEDIATE;
-        else if (decode_src == ADDRESS_IMM)   next_stage = FETCH_SRC_IMM;
-        else if (decode_src == ADDRESS_REG_A) next_stage = FETCH_SRC;
-        else if (decode_dst == ADDRESS_IMM)   next_stage = FETCH_DST_IMM;
-        else if (decode_dst == ADDRESS_REG_A) next_stage = FETCH_DST;
-        else                                  next_stage = EXECUTE;
-      end
+      DECODE: next_stage = FETCH_IMMEDIATE:
 
-      FETCH_SRC_IMM: next_stage = FETCH_SRC;
-
-      FETCH_SRC, FETCH_IMMEDIATE: begin
-        if      (decode_dst == ADDRESS_IMM)   next_stage = FETCH_DST_IMM;
-        else if (decode_dst == ADDRESS_REG_A) next_stage = FETCH_DST;
-        else                                  next_stage = EXECUTE;
-      end
-
-      FETCH_DST_IMM: next_stage = FETCH_DST;
-
-      FETCH_DST: next_stage = EXECUTE;
+      FETCH_IMMEDIATE: unique case (stage_fetch_immediate)
+        END_FETCH_IMMEDIATE: next_stage = EXECUTE;
+        default:             next_stage = FETCH_IMMEDIATE;
+      endcase
 
       EXECUTE: next_stage = WRITE_REGISTER;
 
-      WRITE_REGISTER: begin
-        if (decode_dst == ADDRESS_IMM) next_stage = WRITE_MEMORY;
-        else                           next_stage = FETCH_OPERATION;
-      end
+      WRITE_REGISTER: unique case (decode_dst)
+        ADDRESS_IMM: next_stage = WRITE_MEMORY;
+        default:     next_stage = FETCH_OPERATION;
+      endcase
 
       WRITE_MEMORY: next_stage = FETCH_OPERATION;
 
@@ -470,7 +457,7 @@ module clock_posedge(/*{{{*/
   end
 endmodule/*}}}*/
 
-module update_stage_operation(/*{{{*/
+module update_stage_fetch_operation(/*{{{*/
   input logic CLOCK
   , input logic RESET
   , input STAGE_TYPE stage
@@ -530,6 +517,97 @@ module update_stage_operation(/*{{{*/
       ope <= `BYTE_NOP_OPECODE;
     end else begin
       stage_fetch_operation <= next_stage_fetch_operation;
+      ope <= next_ope;
+    end
+  end
+
+endmodule/*}}}*/
+
+module update_stage_fetch_immediate(/*{{{*/
+  input logic CLOCK
+  , input logic RESET
+  , input STAGE_TYPE stage
+  , input  DEFAULT_TYPE read_bus
+  , input  DEFAULT_TYPE ip
+  , output STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate
+  , output DEFAULT_TYPE next_ip
+  , output DEFAULT_TYPE ope
+);
+  STAGE_FETCH_IMMEDIATE_TYPE next_stage_fetch_immediate;
+
+  always_comb begin
+    unique case (stage)
+      DECODE: unique case (stage_fetch_immediate)
+        BGN_FETCH_IMMEDIATE: begin
+          priority if (decode_src == IMM)           next_stage_fetch_immediate = LOAD_IMMEDIATE;
+          else if     (decode_src == ADDRESS_IMM)   next_stage_fetch_immediate = LOAD_SRC_ADDR;
+          else if     (decode_src == ADDRESS_REG_A) next_stage_fetch_immediate = LOAD_SRC;
+          else if     (decode_dst == ADDRESS_IMM)   next_stage_fetch_immediate = LOAD_DST_ADDR;
+          else if     (decode_dst == ADDRESS_REG_A) next_stage_fetch_immediate = LOAD_DST;
+          else                                      next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
+        end
+
+        LOAD_IMMEDIATE: begin
+          priority if (decode_dst == ADDRESS_IMM)   next_stage_fetch_immediate = LOAD_DST_ADDR;
+          else if     (decode_dst == ADDRESS_REG_A) next_stage_fetch_immediate = LOAD_DST;
+          else                                      next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
+        end
+
+        LOAD_SRC_ADDR: next_stage_fetch_immediate = LOAD_SRC;
+
+        LOAD_SRC: begin
+          priority if (decode_dst == ADDRESS_IMM)   next_stage_fetch_immediate = LOAD_DST_ADDR;
+          else if     (decode_dst == ADDRESS_REG_A) next_stage_fetch_immediate = LOAD_DST;
+          else                                      next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
+        end
+
+        LOAD_DST_ADDR: next_stage_fetch_immediate = LOAD_DST;
+
+        LOAD_DST: next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
+
+        END_FETCH_IMMEDIATE: next_stage_fetch_immediate = IDL_FETCH_IMMEDIATE;
+        IDL_FETCH_IMMEDIATE: next_stage_fetch_immediate = BGN_FETCH_IMMEDIATE;
+      endcase
+
+      default: next_stage_fetch_immediate = IDL_FETCH_IMMEDIATE;
+    endcase
+  end
+
+  DEFAULT_TYPE next_ope;
+  always_comb begin
+    case (stage)
+      FETCH_IMMEDIATE: begin
+        case (stage_fetch_immediate)
+          BGN_FETCH_IMMEDIATE: begin
+            next_ope = read_bus;
+            next_ip  = ip;
+          end
+
+          END_FETCH_IMMEDIATE: begin
+            next_ope = ope;
+            next_ip  = ip + `REGSIZE'd1;
+          end
+
+          default: begin
+            next_ope = ope;
+            next_ip  = ip;
+          end
+        endcase
+      end
+
+      default: begin
+        next_ope = ope;
+        next_ip  = ip;
+      end
+    endcase
+  end
+
+  always_ff @(posedge CLOCK) begin
+    unique if (RESET) begin
+      stage_fetch_immediate <= IDL_FETCH_IMMEDIATE;
+      ope <= `BYTE_NOP_OPECODE;
+    end else begin
+      stage_fetch_immediate <= next_stage_fetch_immediate;
       ope <= next_ope;
     end
   end

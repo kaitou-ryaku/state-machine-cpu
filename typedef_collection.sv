@@ -17,11 +17,6 @@ typedef enum logic [4:0] {
   , EXECUTE
   , WRITE_REGISTER
   , WRITE_MEMORY
-
-  , FETCH_SRC
-  , FETCH_SRC_IMM
-  , FETCH_DST
-  , FETCH_DST_IMM
 } STAGE_TYPE;
 
 typedef enum logic [1:0] {
@@ -30,20 +25,16 @@ typedef enum logic [1:0] {
   , END_FETCH_OPERATION
 } STAGE_FETCH_OPERATION_TYPE;
 
-//typedef enum logic [4:0] {
-//  IDLE_FETCH_IMMEDIATE
-//  , STRT_FETCH_IMMEDIATE
-//  , BUSY_IMMEDIATE
-//  , IDLE_IMMEDIATE
-//  , BUSY_SRC
-//  , IDLE_SRC
-//  , BUSY_SRC_IMM
-//  , IDLE_SRC_IMM
-//  , BUSY_DST
-//  , IDLE_DST
-//  , BUSY_DST_IMM
-//  , IDLE_DST_IMM
-//} STAGE_FETCH_IMMEDIATE_TYPE;
+typedef enum logic [4:0] {
+  IDL_FETCH_IMMEDIATE
+  , BGN_FETCH_IMMEDIATE
+  , END_FETCH_IMMEDIATE
+  , LOAD_IMMEDIATE
+  , LOAD_SRC_ADDR
+  , LOAD_SRC
+  , LOAD_DST_ADDR
+  , LOAD_DST
+} STAGE_FETCH_IMMEDIATE_TYPE;
 
 typedef enum logic [3:0] {ADD, MOV, HLT, JMP, NOP} OPECODE_TYPE;
 
