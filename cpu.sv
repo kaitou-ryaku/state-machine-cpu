@@ -15,7 +15,7 @@ module cpu(/*{{{*/
   STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate;
   STAGE_WRITE_MEMORY_TYPE    stage_write_memory;
 
-  DEFAULT_TYPE ip, next_ip;
+  DEFAULT_TYPE ip;
 
   DEFAULT_TYPE ope;
   OPECODE_TYPE decode_ope;
@@ -298,14 +298,17 @@ module update_register_value(/*{{{*/
 endmodule/*}}}*/
 
 module update_ip(/*{{{*/
-  input STAGE_TYPE stage
-  , input DEFAULT_TYPE ip
-  , input OPECODE_TYPE decode_ope
-  , input DEFAULT_TYPE next_ip_operation
-  , input DEFAULT_TYPE next_ip_immediate
-  , input DEFAULT_TYPE jmp
-  , output DEFAULT_TYPE next_ip
+  input    logic        CLOCK
+  , input  logic        RESET
+  , input  STAGE_TYPE   stage
+  , input  OPECODE_TYPE decode_ope
+  , input  DEFAULT_TYPE next_ip_operation
+  , input  DEFAULT_TYPE next_ip_immediate
+  , input  DEFAULT_TYPE jmp
+  , output DEFAULT_TYPE ip
 );
+
+  DEFAULT_TYPE next_ip;
   always_comb begin
     unique if (decode_ope == HLT) begin
       next_ip = ip;
@@ -318,6 +321,11 @@ module update_ip(/*{{{*/
         default:         next_ip = ip;
       endcase
     end
+  end
+
+  always_ff @(posedge CLOCK) begin
+    unique if (RESET) ip <= `REGSIZE'b0;
+    else ip <= next_ip;
   end
 endmodule/*}}}*/
 
@@ -436,23 +444,19 @@ module clock_posedge(/*{{{*/
   , input  logic            RESET
 
   , input  STAGE_TYPE       next_stage
-  , input  DEFAULT_TYPE     next_ip
   , input  DEFAULT_TYPE     next_original_dst
 
   , output STAGE_TYPE       stage
-  , output DEFAULT_TYPE     ip
   , output DEFAULT_TYPE     original_dst
 
 );
   always_ff @(posedge CLOCK) begin
     unique if (RESET) begin
       stage        <= RESET_STAGE;
-      ip           <= `REGSIZE'b0;
       original_dst <= `REGSIZE'b0;
 
     end else begin
       stage        <= next_stage;
-      ip           <= next_ip;
       original_dst <= next_original_dst;
     end
   end
