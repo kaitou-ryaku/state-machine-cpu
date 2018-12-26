@@ -9,7 +9,7 @@ module cpu(/*{{{*/
   , output DEFAULT_TYPE     write_bus
   , output DEFAULT_TYPE     OUT
 );
-  STAGE_TYPE stage, next_stage;
+  STAGE_TYPE stage;
 
   STAGE_FETCH_OPERATION_TYPE stage_fetch_operation;
   STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate;
@@ -224,15 +224,17 @@ module jmp_addr_bus(/*{{{*/
 endmodule/*}}}*/
 
 module update_stage(/*{{{*/
-  input STAGE_TYPE stage
+  input    logic CLOCK
+  , input  logic RESET
   , input STAGE_FETCH_OPERATION_TYPE stage_fetch_operation
   , input STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate
   , input STAGE_WRITE_MEMORY_TYPE    stage_write_memory
   , input OPERAND_TYPE decode_src
   , input OPERAND_TYPE decode_dst
-  , output STAGE_TYPE next_stage
+  , output STAGE_TYPE stage
 );
 
+  STAGE_TYPE next_stage;
   always_comb begin
     unique case (stage)
       RESET_STAGE: next_stage = FETCH_OPERATION;
@@ -266,6 +268,10 @@ module update_stage(/*{{{*/
     endcase
   end
 
+  always_ff @(posedge CLOCK) begin
+    unique if (RESET) stage <= RESET_STAGE;
+    else stage <= next_stage;
+  end
 endmodule/*}}}*/
 
 module update_register_value(/*{{{*/
@@ -442,23 +448,13 @@ endmodule/*}}}*/
 module clock_posedge(/*{{{*/
   input    logic            CLOCK
   , input  logic            RESET
-
-  , input  STAGE_TYPE       next_stage
   , input  DEFAULT_TYPE     next_original_dst
-
-  , output STAGE_TYPE       stage
   , output DEFAULT_TYPE     original_dst
 
 );
   always_ff @(posedge CLOCK) begin
-    unique if (RESET) begin
-      stage        <= RESET_STAGE;
-      original_dst <= `REGSIZE'b0;
-
-    end else begin
-      stage        <= next_stage;
-      original_dst <= next_original_dst;
-    end
+    unique if (RESET) original_dst <= `REGSIZE'b0;
+    else original_dst <= next_original_dst;
   end
 endmodule/*}}}*/
 
