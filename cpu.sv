@@ -32,8 +32,8 @@ module cpu(/*{{{*/
   DEFAULT_TYPE src;
   decoder_src decoder_src0(.*);
 
-  DEFAULT_TYPE original_dst, next_original_dst;
-  decoder_dst decoder_dst0(.*);
+  DEFAULT_TYPE original_dst;
+  update_original_dst update_original_dst0(.*);
 
   DEFAULT_TYPE dst;
 
@@ -64,8 +64,6 @@ module cpu(/*{{{*/
     .next_ip(next_ip_immediate),
     .addr(addr_immediate)
   );
-
-  clock_posedge clock_posedge0(.*);
 
   assign OUT = register_a;
 endmodule/*}}}*/
@@ -156,14 +154,17 @@ module decoder_src(/*{{{*/
 
 endmodule/*}}}*/
 
-module decoder_dst(/*{{{*/
-  input OPERAND_TYPE decode_dst
-  , input DEFAULT_TYPE register_a
-  , input DEFAULT_TYPE imm
-  , input DEFAULT_TYPE mem_dst
-  , output DEFAULT_TYPE next_original_dst
+module update_original_dst(/*{{{*/
+  input    logic        CLOCK
+  , input  logic        RESET
+  , input  OPERAND_TYPE decode_dst
+  , input  DEFAULT_TYPE register_a
+  , input  DEFAULT_TYPE imm
+  , input  DEFAULT_TYPE mem_dst
+  , output DEFAULT_TYPE original_dst
 );
 
+  DEFAULT_TYPE next_original_dst;
   always_comb begin
     unique case (decode_dst)
       REG_A:         next_original_dst = register_a;
@@ -173,6 +174,10 @@ module decoder_dst(/*{{{*/
     endcase
   end
 
+  always_ff @(posedge CLOCK) begin
+    unique if (RESET) original_dst <= `REGSIZE'b0;
+    else original_dst <= next_original_dst;
+  end
 endmodule/*}}}*/
 
 module alu(/*{{{*/
@@ -442,19 +447,6 @@ module update_memory_flag(/*{{{*/
       WRITE_MEMORY:    ctrl_bus = ctrl_bus_write;
       default:         ctrl_bus = MEMORY_STAY;
     endcase
-  end
-endmodule/*}}}*/
-
-module clock_posedge(/*{{{*/
-  input    logic            CLOCK
-  , input  logic            RESET
-  , input  DEFAULT_TYPE     next_original_dst
-  , output DEFAULT_TYPE     original_dst
-
-);
-  always_ff @(posedge CLOCK) begin
-    unique if (RESET) original_dst <= `REGSIZE'b0;
-    else original_dst <= next_original_dst;
   end
 endmodule/*}}}*/
 
