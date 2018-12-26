@@ -317,66 +317,6 @@ module update_ip(/*{{{*/
   end
 endmodule/*}}}*/
 
-//module update_imm(/*{{{*/
-//  input STAGE_TYPE stage
-//  , input  DEFAULT_TYPE read_bus
-//  , input  DEFAULT_TYPE imm
-//  , input  DEFAULT_TYPE imm_src
-//  , input  DEFAULT_TYPE imm_dst
-//  , output DEFAULT_TYPE next_imm
-//  , output DEFAULT_TYPE next_imm_src
-//  , output DEFAULT_TYPE next_imm_dst
-//);
-//  always_comb begin
-//    unique case (stage)
-//      FETCH_IMMEDIATE: next_imm = read_bus;
-//      default:         next_imm = imm;
-//    endcase
-//  end
-//
-//  always_comb begin
-//    unique case (stage)
-//      FETCH_SRC_IMM: next_imm_src = read_bus;
-//      default:       next_imm_src = imm_src;
-//    endcase
-//  end
-//
-//  always_comb begin
-//    unique case (stage)
-//      FETCH_DST_IMM: next_imm_dst = read_bus;
-//      default:       next_imm_dst = imm_dst;
-//    endcase
-//  end
-//endmodule/*}}}*/
-
-//module update_mem_src(/*{{{*/
-//  input STAGE_TYPE stage
-//  , input  DEFAULT_TYPE read_bus
-//  , input  DEFAULT_TYPE mem_src
-//  , output DEFAULT_TYPE next_mem_src
-//);
-//  always_comb begin
-//    unique case (stage)
-//      FETCH_SRC: next_mem_src = read_bus;
-//      default:   next_mem_src = mem_src;
-//    endcase
-//  end
-//endmodule/*}}}*/
-//
-//module update_mem_dst(/*{{{*/
-//  input STAGE_TYPE stage
-//  , input  DEFAULT_TYPE read_bus
-//  , input  DEFAULT_TYPE mem_dst
-//  , output DEFAULT_TYPE next_mem_dst
-//);
-//  always_comb begin
-//    unique case (stage)
-//      FETCH_DST: next_mem_dst = read_bus;
-//      default:   next_mem_dst = mem_dst;
-//    endcase
-//  end
-//endmodule/*}}}*/
-
 module update_memory_addr_bus(/*{{{*/
   input    STAGE_TYPE   stage
   , input  DEFAULT_TYPE ip
