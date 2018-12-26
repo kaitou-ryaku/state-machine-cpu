@@ -9,7 +9,7 @@
 
 typedef logic [`REGSIZE-1:0] DEFAULT_TYPE;
 
-typedef enum logic [4:0] {
+typedef enum logic [2:0] {
   RESET_STAGE
   , FETCH_OPERATION
   , DECODE
@@ -25,14 +25,19 @@ typedef enum logic [1:0] {
   , END_FETCH_OPERATION
 } STAGE_FETCH_OPERATION_TYPE;
 
-typedef enum logic [4:0] {
+typedef enum logic [3:0] {
   IDL_FETCH_IMMEDIATE
   , BGN_FETCH_IMMEDIATE
   , END_FETCH_IMMEDIATE
+  , WAIT_IMMEDIATE
   , LOAD_IMMEDIATE
+  , WAIT_SRC_ADDR
   , LOAD_SRC_ADDR
+  , WAIT_SRC
   , LOAD_SRC
+  , WAIT_DST_ADDR
   , LOAD_DST_ADDR
+  , WAIT_DST
   , LOAD_DST
 } STAGE_FETCH_IMMEDIATE_TYPE;
 

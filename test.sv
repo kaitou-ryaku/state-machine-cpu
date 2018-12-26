@@ -49,9 +49,9 @@ module test_cpu();
 
     #400;
 
-    RESET = 1'b1;
-    # 11;
-    RESET = 1'b0;
+    //RESET = 1'b1;
+    //# 11;
+    //RESET = 1'b0;
 
     #400;
     $stop;
