@@ -9,11 +9,11 @@ module cpu(/*{{{*/
   , output DEFAULT_TYPE     write_bus
   , output DEFAULT_TYPE     OUT
 );
-  DEFAULT_TYPE next_write_bus;
   STAGE_TYPE stage, next_stage;
 
   STAGE_FETCH_OPERATION_TYPE stage_fetch_operation;
   STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate;
+  STAGE_WRITE_MEMORY_TYPE    stage_write_memory;
 
   DEFAULT_TYPE ip, next_ip;
 
@@ -22,7 +22,7 @@ module cpu(/*{{{*/
   OPERAND_TYPE decode_src, decode_dst;
   decoder decoder0(.*);
 
-  DEFAULT_TYPE register_a, next_register_a;
+  DEFAULT_TYPE register_a;
   DEFAULT_TYPE imm;
   DEFAULT_TYPE mem_src, imm_src_addr;
   DEFAULT_TYPE mem_dst, imm_dst_addr;
@@ -35,27 +35,30 @@ module cpu(/*{{{*/
   DEFAULT_TYPE original_dst, next_original_dst;
   decoder_dst decoder_dst0(.*);
 
-  DEFAULT_TYPE dst, next_dst;
+  DEFAULT_TYPE dst;
 
   alu alu0(.*);
+
+  update_register_value update_register_value0(.*);
 
   DEFAULT_TYPE jmp;
   jmp_addr_bus jmp_addr_bus0(.*);
 
   DEFAULT_TYPE addr_write;
-  update_memory_write update_memory_write0(.*, .addr(addr_write));
+  MEMORY_FLAG_TYPE ctrl_bus_write;
+  update_memory_write update_memory_write0(.*,
+    .addr(addr_write),
+    .ctrl_bus(ctrl_bus_write)
+  );
 
   update_memory_addr_bus update_memory_addr_bus0(.*);
   update_memory_flag update_memory_flag0(.*);
 
   update_stage update_stage0(.*);
-  update_execution_result update_execution_result0(.*);
 
   DEFAULT_TYPE next_ip_operation;
   update_stage_fetch_operation update_stage_fetch_operation0(.*, .next_ip(next_ip_operation));
   update_ip  update_ip0(.*);
-
-  //update_imm update_imm0(.*);
 
   update_stage_fetch_immediate update_stage_fetch_immediate0(.*,
     .next_ip(next_ip_immediate),
@@ -173,13 +176,16 @@ module decoder_dst(/*{{{*/
 endmodule/*}}}*/
 
 module alu(/*{{{*/
-  input STAGE_TYPE stage
-  , input OPECODE_TYPE decode_ope
+  input    logic        CLOCK
+  , input  logic        RESET
+  , input  STAGE_TYPE   stage
+  , input  OPECODE_TYPE decode_ope
   , input  DEFAULT_TYPE src
   , input  DEFAULT_TYPE original_dst
-  , output DEFAULT_TYPE next_dst
+  , output DEFAULT_TYPE dst
 );
 
+  DEFAULT_TYPE next_dst;
   always_comb begin
     unique case (stage)
       EXECUTE: begin
@@ -191,8 +197,13 @@ module alu(/*{{{*/
         endcase
       end
 
-      default: next_dst = original_dst;
+      default: next_dst = dst;
     endcase
+  end
+
+  always_ff @(posedge CLOCK) begin
+    unique if (RESET) dst <= `REGSIZE'b0;
+    else dst <= next_dst;
   end
 
 endmodule/*}}}*/
@@ -216,6 +227,7 @@ module update_stage(/*{{{*/
   input STAGE_TYPE stage
   , input STAGE_FETCH_OPERATION_TYPE stage_fetch_operation
   , input STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate
+  , input STAGE_WRITE_MEMORY_TYPE    stage_write_memory
   , input OPERAND_TYPE decode_src
   , input OPERAND_TYPE decode_dst
   , output STAGE_TYPE next_stage
@@ -237,14 +249,18 @@ module update_stage(/*{{{*/
         default:             next_stage = FETCH_IMMEDIATE;
       endcase
 
-      EXECUTE: next_stage = WRITE_REGISTER;
-
-      WRITE_REGISTER: unique case (decode_dst)
+      EXECUTE: unique case (decode_dst)
+        REG_A:       next_stage = WRITE_REGISTER;
         ADDRESS_IMM: next_stage = WRITE_MEMORY;
         default:     next_stage = FETCH_OPERATION;
       endcase
 
-      WRITE_MEMORY: next_stage = FETCH_OPERATION;
+      WRITE_REGISTER: next_stage = FETCH_OPERATION;
+
+      WRITE_MEMORY: unique case (stage_write_memory)
+        END_WRITE_MEMORY: next_stage = FETCH_OPERATION;
+        default:          next_stage = WRITE_MEMORY;
+      endcase
 
       default: next_stage = FETCH_OPERATION;
     endcase
@@ -252,45 +268,33 @@ module update_stage(/*{{{*/
 
 endmodule/*}}}*/
 
-module update_execution_result(/*{{{*/
-  input STAGE_TYPE stage
-  , input OPERAND_TYPE decode_dst
+module update_register_value(/*{{{*/
+  input    logic        CLOCK
+  , input  logic        RESET
+  , input  STAGE_TYPE   stage
+  , input  OPERAND_TYPE decode_dst
   , input  DEFAULT_TYPE dst
-  , input  DEFAULT_TYPE register_a
-  , output DEFAULT_TYPE next_register_a
-  , output DEFAULT_TYPE next_write_bus
+  , output DEFAULT_TYPE register_a
 );
 
+  DEFAULT_TYPE next_register_a;
   always_comb begin
-    if (stage == WRITE_REGISTER) begin
-      unique case (decode_dst)
-        REG_A: begin
-          next_register_a = dst;
-          next_write_bus = `REGSIZE'b0;
-        end
-
-        ADDRESS_REG_A: begin
-          next_register_a = register_a;
-          next_write_bus = dst;
-        end
-
-        ADDRESS_IMM: begin
-          next_register_a = register_a;
-          next_write_bus = dst;
-        end
-
-        default: begin
-          next_register_a = register_a;
-          next_write_bus = `REGSIZE'b0;
-        end
+    unique case (stage)
+      WRITE_REGISTER: unique case (decode_dst)
+        REG_A:         next_register_a = dst;
+        ADDRESS_REG_A: next_register_a = register_a;
+        ADDRESS_IMM:   next_register_a = register_a;
+        default:       next_register_a = register_a;
       endcase
 
-    end else begin
-      next_register_a = register_a;
-      next_write_bus = `REGSIZE'b0;
-    end
+      default:         next_register_a = register_a;
+    endcase
   end
 
+  always_ff @(posedge CLOCK) begin
+    unique if (RESET) register_a <= `REGSIZE'd0;
+    else              register_a <= next_register_a;
+  end
 endmodule/*}}}*/
 
 module update_ip(/*{{{*/
@@ -335,12 +339,46 @@ module update_memory_addr_bus(/*{{{*/
 endmodule/*}}}*/
 
 module update_memory_write(/*{{{*/
-  input   STAGE_TYPE   stage
-  , input OPERAND_TYPE decode_dst
-  , input DEFAULT_TYPE register_a
-  , input DEFAULT_TYPE imm_dst_addr
+  input    logic        CLOCK
+  , input  logic        RESET
+
+  , input  DEFAULT_TYPE register_a
+  , input  DEFAULT_TYPE imm_dst_addr
   , output DEFAULT_TYPE addr
+
+  , input  STAGE_TYPE   stage
+  , input  OPERAND_TYPE decode_dst
+  , input  DEFAULT_TYPE dst
+  , output DEFAULT_TYPE write_bus
+  , output STAGE_WRITE_MEMORY_TYPE stage_write_memory
+  , output MEMORY_FLAG_TYPE ctrl_bus
 );
+
+  STAGE_WRITE_MEMORY_TYPE next_stage_write_memory;
+  always_comb begin
+    unique case (stage)
+      WRITE_MEMORY: begin
+        unique case (stage_write_memory)
+          BGN_WRITE_MEMORY: next_stage_write_memory = END_WRITE_MEMORY;
+          END_WRITE_MEMORY: next_stage_write_memory = IDL_WRITE_MEMORY;
+          IDL_WRITE_MEMORY: next_stage_write_memory = BGN_WRITE_MEMORY;
+        endcase
+      end
+      default: next_stage_write_memory = IDL_WRITE_MEMORY;
+    endcase
+  end
+
+  always_comb begin
+    unique case (stage)
+      WRITE_MEMORY: unique case(stage_write_memory)
+        BGN_WRITE_MEMORY: ctrl_bus = MEMORY_WRITE;
+        END_WRITE_MEMORY: ctrl_bus = MEMORY_WRITE;
+        IDL_WRITE_MEMORY: ctrl_bus = MEMORY_STAY;
+        default:          ctrl_bus = MEMORY_STAY;
+      endcase
+    endcase
+  end
+
   always_comb begin
     unique case (stage)
       WRITE_MEMORY: unique case (decode_dst)
@@ -352,57 +390,70 @@ module update_memory_write(/*{{{*/
       default:         addr = `REGSIZE'd0;
     endcase
   end
+
+  DEFAULT_TYPE next_write_bus;
+  always_comb begin
+    unique case (stage)
+      WRITE_MEMORY: unique case (decode_dst)
+        REG_A:         next_write_bus = write_bus;
+        ADDRESS_REG_A: next_write_bus = dst;
+        ADDRESS_IMM:   next_write_bus = dst;
+        default:       next_write_bus = write_bus;
+      endcase
+
+      default:         next_write_bus = write_bus;
+    endcase
+  end
+
+  always_ff @(posedge CLOCK) begin
+    unique if (RESET) begin
+      stage_write_memory <= IDL_WRITE_MEMORY;
+      write_bus <= `REGSIZE'b0;
+    end else begin
+      stage_write_memory <= next_stage_write_memory;
+      write_bus <= next_write_bus;
+    end
+  end
 endmodule/*}}}*/
 
 module update_memory_flag(/*{{{*/
   input    STAGE_TYPE       stage
+  , input  MEMORY_FLAG_TYPE ctrl_bus_write
   , output MEMORY_FLAG_TYPE ctrl_bus
 );
   always_comb begin
     unique case (stage)
       FETCH_OPERATION: ctrl_bus = MEMORY_READ;
       FETCH_IMMEDIATE: ctrl_bus = MEMORY_READ;
-      WRITE_MEMORY:    ctrl_bus = MEMORY_WRITE;
+      WRITE_MEMORY:    ctrl_bus = ctrl_bus_write;
       default:         ctrl_bus = MEMORY_STAY;
     endcase
   end
 endmodule/*}}}*/
 
 module clock_posedge(/*{{{*/
-  input logic CLOCK
-  , input logic RESET
+  input    logic            CLOCK
+  , input  logic            RESET
 
   , input  STAGE_TYPE       next_stage
   , input  DEFAULT_TYPE     next_ip
-  , input  DEFAULT_TYPE     next_register_a
-  , input  DEFAULT_TYPE     next_dst
   , input  DEFAULT_TYPE     next_original_dst
-  , input  DEFAULT_TYPE     next_write_bus
 
   , output STAGE_TYPE       stage
   , output DEFAULT_TYPE     ip
-  , output DEFAULT_TYPE     register_a
-  , output DEFAULT_TYPE     dst
   , output DEFAULT_TYPE     original_dst
-  , output DEFAULT_TYPE     write_bus
 
 );
   always_ff @(posedge CLOCK) begin
     unique if (RESET) begin
       stage        <= RESET_STAGE;
       ip           <= `REGSIZE'b0;
-      register_a   <= `REGSIZE'b0;
-      dst          <= `REGSIZE'b0;
       original_dst <= `REGSIZE'b0;
-      write_bus    <= `REGSIZE'b0;
 
     end else begin
       stage        <= next_stage;
       ip           <= next_ip;
-      register_a   <= next_register_a;
-      dst          <= next_dst;
       original_dst <= next_original_dst;
-      write_bus    <= next_write_bus;
     end
   end
 endmodule/*}}}*/
