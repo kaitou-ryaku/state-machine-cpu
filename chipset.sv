@@ -42,20 +42,29 @@ module chipset(/*{{{*/
   CHIPSET_STATE_TYPE chipset_state;
   load_rom_addr load_rom_addr0(.*);
 
+  DEFAULT_TYPE rom_to_mem_addr;
   always_ff @(posedge CLOCK) begin
     unique case (chipset_state)
       CHIPSET_RESET:    cpu_reset <= 1'b1;
       CHIPSET_LOAD_ROM: cpu_reset <= 1'b1;
       CHIPSET_EXEC_CPU: cpu_reset <= 1'b0;
     endcase
+    rom_to_mem_addr <= rom_addr_bus;
   end
 
   assign cpu_read_bus = mem_read_bus;
+
   always_comb begin
     unique case (chipset_state)
-    CHIPSET_RESET, CHIPSET_LOAD_ROM: begin
+    CHIPSET_RESET: begin
+      mem_write_bus = `REGSIZE'd0;
+      mem_addr_bus  = `REGSIZE'd0;
+      mem_ctrl_bus  = MEMORY_STAY;
+    end
+
+    CHIPSET_LOAD_ROM: begin
       mem_write_bus = rom_read_bus;
-      mem_addr_bus  = rom_addr_bus;
+      mem_addr_bus  = rom_to_mem_addr;
       mem_ctrl_bus  = MEMORY_WRITE;
     end
 
