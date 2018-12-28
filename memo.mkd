@@ -1,0 +1,10 @@
+# 残りタスク
+
+* push, pop
+* bpレジスタ
+* フラグレジスタ
+* sub, cmp
+* 各種jcc
+* call, leave, ret
+* 32bit拡張
+* ModRM
