@@ -4,6 +4,9 @@
 00001111 // imm=15 // OUT
 00010011 // add a, imm
 00000001 // imm=1
+01000011 // mov sp, imm
+11111111 // imm=255
+10010000 // add sp, a
 11000000 // jmp imm
-11111010 // imm=-6 (goto ```mov [imm], a```)
+11111001 // imm=-7 (goto ```add a, imm```)
 11111111 // hlt

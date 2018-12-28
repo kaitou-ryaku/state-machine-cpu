@@ -22,7 +22,7 @@ module cpu(/*{{{*/
   OPERAND_TYPE decode_src, decode_dst;
   decoder decoder0(.*);
 
-  DEFAULT_TYPE register_a;
+  DEFAULT_TYPE register_a, register_sp;
   DEFAULT_TYPE imm;
   DEFAULT_TYPE mem_src, imm_src_addr;
   DEFAULT_TYPE mem_dst, imm_dst_addr;
@@ -86,8 +86,11 @@ module decoder(/*{{{*/
     unique case (stage)
       DECODE: begin
         unique casez (ope)
-          `REGSIZE'b0000????: next_decode_ope = MOV;
-          `REGSIZE'b0001????: next_decode_ope = ADD;
+          `REGSIZE'b0?00????: next_decode_ope = MOV;
+          `REGSIZE'b0?01????: next_decode_ope = ADD;
+          `REGSIZE'b1000????: next_decode_ope = MOV;
+          `REGSIZE'b1001????: next_decode_ope = ADD;
+
           `REGSIZE'b1100????: next_decode_ope = JMP;
           `REGSIZE'b11111110: next_decode_ope = NOP;
           `REGSIZE'b11111111: next_decode_ope = HLT;
@@ -99,6 +102,17 @@ module decoder(/*{{{*/
           `REGSIZE'b00??01??: next_decode_dst = ADDRESS_REG_A;
           `REGSIZE'b00??10??: next_decode_dst = ADDRESS_IMM;
           `REGSIZE'b00??11??: next_decode_dst = IMM; // TODO
+
+          `REGSIZE'b01??00??: next_decode_dst = REG_SP;
+          `REGSIZE'b01??01??: next_decode_dst = ADDRESS_REG_SP;
+          `REGSIZE'b01??10??: next_decode_dst = ADDRESS_IMM;
+          `REGSIZE'b01??11??: next_decode_dst = IMM; // TODO
+
+          `REGSIZE'b10??00??: next_decode_dst = REG_SP;
+          `REGSIZE'b10??01??: next_decode_dst = ADDRESS_REG_SP;
+          `REGSIZE'b10??10??: next_decode_dst = ADDRESS_IMM;
+          `REGSIZE'b10??11??: next_decode_dst = IMM; // TODO
+
           default:            next_decode_dst = UNUSED;
         endcase
 
@@ -107,6 +121,17 @@ module decoder(/*{{{*/
           `REGSIZE'b00????01: next_decode_src = ADDRESS_REG_A;
           `REGSIZE'b00????10: next_decode_src = ADDRESS_IMM;
           `REGSIZE'b00????11: next_decode_src = IMM;
+
+          `REGSIZE'b10????00: next_decode_src = REG_A;
+          `REGSIZE'b10????01: next_decode_src = ADDRESS_REG_A;
+          `REGSIZE'b10????10: next_decode_src = ADDRESS_IMM;
+          `REGSIZE'b10????11: next_decode_src = IMM;
+
+          `REGSIZE'b01????00: next_decode_src = REG_SP;
+          `REGSIZE'b01????01: next_decode_src = ADDRESS_REG_SP;
+          `REGSIZE'b01????10: next_decode_src = ADDRESS_IMM;
+          `REGSIZE'b01????11: next_decode_src = IMM;
+
           `REGSIZE'b1100????: next_decode_src = IMM; // JMP
           default:            next_decode_src = UNUSED;
         endcase
@@ -137,6 +162,7 @@ endmodule/*}}}*/
 module decoder_src(/*{{{*/
   input OPERAND_TYPE decode_src
   , input DEFAULT_TYPE register_a
+  , input DEFAULT_TYPE register_sp
   , input DEFAULT_TYPE imm
   , input DEFAULT_TYPE mem_src
   , output DEFAULT_TYPE src
@@ -144,11 +170,13 @@ module decoder_src(/*{{{*/
 
   always_comb begin
     unique case (decode_src)
-      REG_A:         src = register_a;
-      ADDRESS_REG_A: src = mem_src;
-      ADDRESS_IMM:   src = mem_src;
-      IMM:           src = imm;
-      default:       src = `REGSIZE'd0;
+      REG_A:          src = register_a;
+      REG_SP:         src = register_sp;
+      ADDRESS_REG_A:  src = mem_src;
+      ADDRESS_REG_SP: src = mem_src;
+      ADDRESS_IMM:    src = mem_src;
+      IMM:            src = imm;
+      default:        src = `REGSIZE'd0;
     endcase
   end
 
@@ -159,6 +187,7 @@ module update_original_dst(/*{{{*/
   , input  logic        RESET
   , input  OPERAND_TYPE decode_dst
   , input  DEFAULT_TYPE register_a
+  , input  DEFAULT_TYPE register_sp
   , input  DEFAULT_TYPE imm
   , input  DEFAULT_TYPE mem_dst
   , output DEFAULT_TYPE original_dst
@@ -167,10 +196,12 @@ module update_original_dst(/*{{{*/
   DEFAULT_TYPE next_original_dst;
   always_comb begin
     unique case (decode_dst)
-      REG_A:         next_original_dst = register_a;
-      ADDRESS_REG_A: next_original_dst = mem_dst;
-      ADDRESS_IMM:   next_original_dst = mem_dst;
-      default:       next_original_dst = `REGSIZE'd0;
+      REG_A:          next_original_dst = register_a;
+      REG_SP:         next_original_dst = register_sp;
+      ADDRESS_REG_A:  next_original_dst = mem_dst;
+      ADDRESS_REG_SP: next_original_dst = mem_dst;
+      ADDRESS_IMM:    next_original_dst = mem_dst;
+      default:        next_original_dst = `REGSIZE'd0;
     endcase
   end
 
@@ -257,9 +288,9 @@ module update_stage(/*{{{*/
       endcase
 
       EXECUTE: unique case (decode_dst)
-        REG_A:       next_stage = WRITE_REGISTER;
-        ADDRESS_IMM: next_stage = WRITE_MEMORY;
-        default:     next_stage = FETCH_OPERATION;
+        REG_A, REG_SP: next_stage = WRITE_REGISTER;
+        ADDRESS_IMM:   next_stage = WRITE_MEMORY;
+        default:       next_stage = FETCH_OPERATION;
       endcase
 
       WRITE_REGISTER: next_stage = FETCH_OPERATION;
@@ -286,25 +317,24 @@ module update_register_value(/*{{{*/
   , input  OPERAND_TYPE decode_dst
   , input  DEFAULT_TYPE dst
   , output DEFAULT_TYPE register_a
+  , output DEFAULT_TYPE register_sp
 );
 
-  DEFAULT_TYPE next_register_a;
+  DEFAULT_TYPE next_register_a, next_register_sp;
   always_comb begin
-    unique case (stage)
-      WRITE_REGISTER: unique case (decode_dst)
-        REG_A:         next_register_a = dst;
-        ADDRESS_REG_A: next_register_a = register_a;
-        ADDRESS_IMM:   next_register_a = register_a;
-        default:       next_register_a = register_a;
-      endcase
+    if ((stage == WRITE_REGISTER) & (decode_dst == REG_A )) next_register_a  = dst;
+    else next_register_a = register_a;
 
-      default:         next_register_a = register_a;
-    endcase
+    if ((stage == WRITE_REGISTER) & (decode_dst == REG_SP)) next_register_sp = dst;
+    else next_register_sp = register_sp;
   end
 
   always_ff @(posedge CLOCK) begin
     unique if (RESET) register_a <= `REGSIZE'd0;
     else              register_a <= next_register_a;
+
+    unique if (RESET) register_sp <= `REGSIZE'd0;
+    else              register_sp <= next_register_sp;
   end
 endmodule/*}}}*/
 
@@ -362,6 +392,7 @@ module update_memory_write(/*{{{*/
   , input  logic        RESET
 
   , input  DEFAULT_TYPE register_a
+  , input  DEFAULT_TYPE register_sp
   , input  DEFAULT_TYPE imm_dst_addr
   , output DEFAULT_TYPE addr
 
@@ -401,12 +432,13 @@ module update_memory_write(/*{{{*/
   always_comb begin
     unique case (stage)
       WRITE_MEMORY: unique case (decode_dst)
-        ADDRESS_REG_A: addr = register_a;
-        ADDRESS_IMM:   addr = imm_dst_addr;
-        default:       addr = `REGSIZE'd0;
+        ADDRESS_REG_A:  addr = register_a;
+        ADDRESS_REG_SP: addr = register_sp;
+        ADDRESS_IMM:    addr = imm_dst_addr;
+        default:        addr = `REGSIZE'd0;
       endcase
 
-      default:         addr = `REGSIZE'd0;
+      default:          addr = `REGSIZE'd0;
     endcase
   end
 
@@ -414,10 +446,12 @@ module update_memory_write(/*{{{*/
   always_comb begin
     unique case (stage)
       WRITE_MEMORY: unique case (decode_dst)
-        REG_A:         next_write_bus = write_bus;
-        ADDRESS_REG_A: next_write_bus = dst;
-        ADDRESS_IMM:   next_write_bus = dst;
-        default:       next_write_bus = write_bus;
+        REG_A:          next_write_bus = write_bus;
+        REG_SP:         next_write_bus = write_bus;
+        ADDRESS_REG_A:  next_write_bus = dst;
+        ADDRESS_REG_SP: next_write_bus = dst;
+        ADDRESS_IMM:    next_write_bus = dst;
+        default:        next_write_bus = write_bus;
       endcase
 
       default:         next_write_bus = write_bus;
@@ -523,6 +557,7 @@ module update_stage_fetch_immediate(/*{{{*/
   , input  DEFAULT_TYPE read_bus
   , input  DEFAULT_TYPE ip
   , input  DEFAULT_TYPE register_a
+  , input  DEFAULT_TYPE register_sp
   , input  OPERAND_TYPE decode_src
   , input  OPERAND_TYPE decode_dst
   , output STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate
@@ -541,26 +576,30 @@ module update_stage_fetch_immediate(/*{{{*/
     unique case (stage)
       FETCH_IMMEDIATE: unique case (stage_fetch_immediate)
         BGN_FETCH_IMMEDIATE: begin
-          priority if (decode_src == IMM)           next_stage_fetch_immediate = WAIT_IMMEDIATE;
-          else if     (decode_src == ADDRESS_IMM)   next_stage_fetch_immediate = WAIT_SRC_ADDR;
-          else if     (decode_src == ADDRESS_REG_A) next_stage_fetch_immediate = WAIT_SRC;
-          else if     (decode_dst == ADDRESS_IMM)   next_stage_fetch_immediate = WAIT_DST_ADDR;
-          else if     (decode_dst == ADDRESS_REG_A) next_stage_fetch_immediate = WAIT_DST;
-          else                                      next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
+          priority if (decode_src == IMM)            next_stage_fetch_immediate = WAIT_IMMEDIATE;
+          else if     (decode_src == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_SRC_ADDR;
+          else if     (decode_src == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_SRC;
+          else if     (decode_src == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_SRC;
+          else if     (decode_dst == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_DST_ADDR;
+          else if     (decode_dst == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_DST;
+          else if     (decode_dst == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_DST;
+          else                                       next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
         end
 
         LOAD_IMMEDIATE: begin
-          priority if (decode_dst == ADDRESS_IMM)   next_stage_fetch_immediate = WAIT_DST_ADDR;
-          else if     (decode_dst == ADDRESS_REG_A) next_stage_fetch_immediate = WAIT_DST;
-          else                                      next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
+          priority if (decode_dst == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_DST_ADDR;
+          else if     (decode_dst == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_DST;
+          else if     (decode_dst == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_DST;
+          else                                       next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
         end
 
         LOAD_SRC_ADDR: next_stage_fetch_immediate = WAIT_SRC;
 
         LOAD_SRC: begin
-          priority if (decode_dst == ADDRESS_IMM)   next_stage_fetch_immediate = WAIT_DST_ADDR;
-          else if     (decode_dst == ADDRESS_REG_A) next_stage_fetch_immediate = WAIT_DST;
-          else                                      next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
+          priority if (decode_dst == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_DST_ADDR;
+          else if     (decode_dst == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_DST;
+          else if     (decode_dst == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_DST;
+          else                                       next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
         end
 
         LOAD_DST_ADDR: next_stage_fetch_immediate = WAIT_DST;
@@ -666,20 +705,22 @@ module update_stage_fetch_immediate(/*{{{*/
           WAIT_DST_ADDR,  LOAD_DST_ADDR:   addr = ip;
 
           WAIT_SRC, LOAD_SRC: unique case (decode_src)
-            ADDRESS_REG_A: addr = register_a;
-            ADDRESS_IMM:   addr = imm_src_addr;
+            ADDRESS_REG_A:  addr = register_a;
+            ADDRESS_REG_SP: addr = register_sp;
+            ADDRESS_IMM:    addr = imm_src_addr;
           endcase
 
           WAIT_DST, LOAD_DST: unique case (decode_dst)
-            ADDRESS_REG_A: addr = register_a;
-            ADDRESS_IMM:   addr = imm_dst_addr;
+            ADDRESS_REG_A:  addr = register_a;
+            ADDRESS_REG_SP: addr = register_sp;
+            ADDRESS_IMM:    addr = imm_dst_addr;
           endcase
 
-          default:         addr = `REGSIZE'd0;
+          default:          addr = `REGSIZE'd0;
         endcase
       end
 
-      default:             addr = `REGSIZE'd0;
+      default:              addr = `REGSIZE'd0;
     endcase
   end
 

@@ -43,7 +43,15 @@ typedef enum logic [3:0] {
 
 typedef enum logic [3:0] {ADD, MOV, HLT, JMP, NOP} OPECODE_TYPE;
 
-typedef enum logic [2:0] {REG_A, ADDRESS_REG_A, ADDRESS_IMM, IMM, UNUSED} OPERAND_TYPE;
+typedef enum logic [2:0] {
+  REG_A
+  , REG_SP
+  , ADDRESS_REG_A
+  , ADDRESS_REG_SP
+  , ADDRESS_IMM
+  , IMM
+  , UNUSED
+} OPERAND_TYPE;
 
 typedef enum logic [3:0] {MEMORY_STAY, MEMORY_READ, MEMORY_WRITE} MEMORY_FLAG_TYPE;
 

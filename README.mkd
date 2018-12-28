@@ -6,21 +6,25 @@ HDL codes are written in System Verilog.
 
 ### Instruction
 
-|mnemonic |binary    |bit  |explanation|
-|:--------|:---------|:----|:----------|
-|mov  x, y|0000 xx yy|8/16 |x = y      |
-|add  x, y|0001 xx yy|8/16 |x = x + y  |
-|jmp imm  |1100 ?? ??|16   |           |
-|hlt      |1111 ?? ??|8    |stop       |
+|mnemonic   |binary    |bit  |explanation     |
+|:----------|:---------|:----|:---------------|
+|mov @a, $a |0000 xx yy|8/16 |@a  = $a        |
+|add @a, $a |0001 xx yy|8/16 |@a  = $a + @a   |
+|mov @sp,$sp|0010 xx yy|8/16 |@sp = $sp       |
+|add @sp,$sp|0011 xx yy|8/16 |@sp = $a + @sp  |
+|mov @sp,$a |0010 xx yy|8/16 |@sp = $a        |
+|add @sp,$a |0011 xx yy|8/16 |@sp = $a + @sp  |
+|jmp imm    |1100 ?? ??|16   |                |
+|hlt        |1111 ?? ??|8    |stop            |
 
-|x       |binary|
+|$a      |binary|
 |:-------|:-----|
 |a       |00    |
 |[a]     |01    |
 |[imm]   |10    |
 |imm     |11    |
 
-|y       |binary|
+|@a      |binary|
 |:-------|:-----|
 |a       |00    |
 |[a]     |01    |
