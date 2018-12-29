@@ -100,7 +100,7 @@ module decoder(/*{{{*/
     endcase
   end
 
-  OPERAND_TYPE next_decode_src;
+  OPERAND_TYPE next_decode_dst;
   always_comb begin
     unique case (stage)
       DECODE: unique casez (ope)
@@ -128,22 +128,22 @@ module decoder(/*{{{*/
         // POP a
         `REGSIZE'b11100100: next_decode_dst = REG_A;
         `REGSIZE'b11100101: next_decode_dst = ADDRESS_REG_A;
-        `REGSIZE'b11100110: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b11100111: next_decode_dst = IMM;
+        `REGSIZE'b11100110: next_decode_dst = UNUSED; // TODO
+        `REGSIZE'b11100111: next_decode_dst = UNUSED; // TODO
 
         // POP sp
         `REGSIZE'b11110100: next_decode_dst = REG_SP;
         `REGSIZE'b11110101: next_decode_dst = ADDRESS_REG_SP;
-        `REGSIZE'b11110110: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b11110111: next_decode_dst = IMM;
+        `REGSIZE'b11110110: next_decode_dst = UNUSED; // TODO
+        `REGSIZE'b11110111: next_decode_dst = UNUSED; // TODO
 
         default:            next_decode_dst = UNUSED;
         endcase
-      default: next_decode_src = decode_src;
+      default: next_decode_dst = decode_dst;
     endcase
   end
 
-  OPERAND_TYPE next_decode_dst;
+  OPERAND_TYPE next_decode_src;
   always_comb begin
     unique case (stage)
       DECODE: unique casez (ope)
@@ -178,13 +178,13 @@ module decoder(/*{{{*/
         `REGSIZE'b11110011: next_decode_src = IMM;
 
         // POP ?
-        `REGSIZE'b111?01??: next_decode_dst = ADDRESS_REG_SP_PREV;
+        `REGSIZE'b111?01??: next_decode_src = ADDRESS_REG_SP_PREV;
 
         // JMP
         `REGSIZE'b1100????: next_decode_src = IMM;
         default:            next_decode_src = UNUSED;
         endcase
-      default: next_decode_dst = decode_dst;
+      default: next_decode_src = decode_src;
     endcase
   end
 
@@ -271,6 +271,8 @@ module alu(/*{{{*/
         unique case (decode_ope)
           ADD:     next_dst = original_dst+src;
           MOV:     next_dst = src;
+          PUSH:    next_dst = src;
+          POP:     next_dst = src;
           HLT:     next_dst = original_dst;
           default: next_dst = original_dst;
         endcase
@@ -308,6 +310,7 @@ module update_stage(/*{{{*/
   , input STAGE_FETCH_OPERATION_TYPE stage_fetch_operation
   , input STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate
   , input STAGE_WRITE_MEMORY_TYPE    stage_write_memory
+  , input OPECODE_TYPE decode_ope
   , input OPERAND_TYPE decode_src
   , input OPERAND_TYPE decode_dst
   , output STAGE_TYPE stage
@@ -339,8 +342,11 @@ module update_stage(/*{{{*/
       WRITE_REGISTER: next_stage = FETCH_OPERATION;
 
       WRITE_MEMORY: unique case (stage_write_memory)
-        END_WRITE_MEMORY: next_stage = FETCH_OPERATION;
-        default:          next_stage = WRITE_MEMORY;
+        END_WRITE_MEMORY: unique case (decode_ope)
+          PUSH:    next_stage = WRITE_REGISTER; // update sp
+          default: next_stage = FETCH_OPERATION;
+        endcase
+        default:   next_stage = WRITE_MEMORY;
       endcase
 
       default: next_stage = FETCH_OPERATION;
@@ -357,6 +363,7 @@ module update_register_value(/*{{{*/
   input    logic        CLOCK
   , input  logic        RESET
   , input  STAGE_TYPE   stage
+  , input  OPECODE_TYPE decode_ope
   , input  OPERAND_TYPE decode_dst
   , input  DEFAULT_TYPE dst
   , output DEFAULT_TYPE register_a
@@ -368,15 +375,19 @@ module update_register_value(/*{{{*/
     if ((stage == WRITE_REGISTER) & (decode_dst == REG_A )) next_register_a  = dst;
     else next_register_a = register_a;
 
-    if ((stage == WRITE_REGISTER) & (decode_dst == REG_SP)) next_register_sp = dst;
-    else next_register_sp = register_sp;
+    if (stage == WRITE_REGISTER) begin
+      if (decode_dst == REG_SP)    next_register_sp = dst;
+      else if (decode_ope == PUSH) next_register_sp = register_sp-`REGSIZE'd1;
+      else if (decode_ope == POP)  next_register_sp = register_sp+`REGSIZE'd1;
+      else next_register_sp = register_sp;
+    end else next_register_sp = register_sp;
   end
 
   always_ff @(posedge CLOCK) begin
     unique if (RESET) register_a <= `REGSIZE'd0;
     else              register_a <= next_register_a;
 
-    unique if (RESET) register_sp <= `REGSIZE'd0;
+    unique if (RESET) register_sp <= `REGSIZE'd`MEMSIZE;
     else              register_sp <= next_register_sp;
   end
 endmodule/*}}}*/
@@ -394,17 +405,13 @@ module update_ip(/*{{{*/
 
   DEFAULT_TYPE next_ip;
   always_comb begin
-    unique if (decode_ope == HLT) begin
-      next_ip = ip;
-
-    end else begin
-      unique case (stage)
-        FETCH_OPERATION: next_ip = next_ip_operation;
-        FETCH_IMMEDIATE: next_ip = next_ip_immediate;
-        EXECUTE:         next_ip = ip + jmp;
-        default:         next_ip = ip;
-      endcase
-    end
+    unique if (decode_ope == HLT) next_ip = ip;
+    else unique case (stage)
+      FETCH_OPERATION: next_ip = next_ip_operation;
+      FETCH_IMMEDIATE: next_ip = next_ip_immediate;
+      EXECUTE:         next_ip = ip + jmp;
+      default:         next_ip = ip;
+    endcase
   end
 
   always_ff @(posedge CLOCK) begin
@@ -748,9 +755,10 @@ module update_stage_fetch_immediate(/*{{{*/
           WAIT_DST_ADDR,  LOAD_DST_ADDR:   addr = ip;
 
           WAIT_SRC, LOAD_SRC: unique case (decode_src)
-            ADDRESS_REG_A:  addr = register_a;
-            ADDRESS_REG_SP: addr = register_sp;
-            ADDRESS_IMM:    addr = imm_src_addr;
+            ADDRESS_REG_A:       addr = register_a;
+            ADDRESS_REG_SP:      addr = register_sp;
+            ADDRESS_REG_SP_PREV: addr = register_sp+`REGSIZE'd1;
+            ADDRESS_IMM:         addr = imm_src_addr;
           endcase
 
           WAIT_DST, LOAD_DST: unique case (decode_dst)
