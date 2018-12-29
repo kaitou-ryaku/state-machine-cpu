@@ -41,13 +41,14 @@ typedef enum logic [3:0] {
   , LOAD_DST
 } STAGE_FETCH_IMMEDIATE_TYPE;
 
-typedef enum logic [3:0] {ADD, MOV, HLT, JMP, NOP} OPECODE_TYPE;
+typedef enum logic [3:0] {ADD, MOV, HLT, JMP, NOP, PUSH, POP} OPECODE_TYPE;
 
-typedef enum logic [2:0] {
+typedef enum logic [3:0] {
   REG_A
   , REG_SP
   , ADDRESS_REG_A
   , ADDRESS_REG_SP
+  , ADDRESS_REG_SP_PREV
   , ADDRESS_IMM
   , IMM
   , UNUSED

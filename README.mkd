@@ -6,16 +6,20 @@ HDL codes are written in System Verilog.
 
 ### Instruction
 
-|mnemonic   |binary    |bit  |explanation     |
-|:----------|:---------|:----|:---------------|
-|mov @a, $a |0000 xx yy|8/16 |@a  = $a        |
-|add @a, $a |0001 xx yy|8/16 |@a  = $a + @a   |
-|mov @sp,$sp|0010 xx yy|8/16 |@sp = $sp       |
-|add @sp,$sp|0011 xx yy|8/16 |@sp = $a + @sp  |
-|mov @sp,$a |0010 xx yy|8/16 |@sp = $a        |
-|add @sp,$a |0011 xx yy|8/16 |@sp = $a + @sp  |
-|jmp imm    |1100 ?? ??|16   |                |
-|hlt        |1111 ?? ??|8    |stop            |
+|mnemonic   |binary    |bit  |explanation         |
+|:----------|:---------|:----|:-------------------|
+|mov @a, $a |0000 xx yy|8/16 |@a  = $a            |
+|add @a, $a |0001 xx yy|8/16 |@a  = $a + @a       |
+|mov @sp,$sp|0010 xx yy|8/16 |@sp = $sp           |
+|add @sp,$sp|0011 xx yy|8/16 |@sp = $a + @sp      |
+|mov @sp,$a |0010 xx yy|8/16 |@sp = $a            |
+|add @sp,$a |0011 xx yy|8/16 |@sp = $a + @sp      |
+|push a     |1110 00 a |8/16 |mov [sp], a   ; sp--|
+|push sp    |1111 00 sp|8/16 |mov [sp], sp  ; sp--|
+|pop a      |1110 01 a |8/16 |mov a , [sp+1]; sp++|
+|pop sp     |1111 01 sp|8/16 |mov sp, [sp+1]; sp++|
+|jmp imm    |1100 ?? ??|16   |                    |
+|hlt        |1111 ?? ??|8    |stop                |
 
 |$a      |binary|
 |:-------|:-----|

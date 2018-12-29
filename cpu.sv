@@ -79,69 +79,112 @@ module decoder(/*{{{*/
 );
 
   OPECODE_TYPE next_decode_ope;
-  OPERAND_TYPE next_decode_src;
-  OPERAND_TYPE next_decode_dst;
-
   always_comb begin
     unique case (stage)
-      DECODE: begin
-        unique casez (ope)
-          `REGSIZE'b0?00????: next_decode_ope = MOV;
-          `REGSIZE'b0?01????: next_decode_ope = ADD;
-          `REGSIZE'b1000????: next_decode_ope = MOV;
-          `REGSIZE'b1001????: next_decode_ope = ADD;
+      DECODE: unique casez (ope)
+        `REGSIZE'b0?00????: next_decode_ope = MOV;
+        `REGSIZE'b0?01????: next_decode_ope = ADD;
+        `REGSIZE'b1000????: next_decode_ope = MOV;
+        `REGSIZE'b1001????: next_decode_ope = ADD;
 
-          `REGSIZE'b1100????: next_decode_ope = JMP;
-          `REGSIZE'b11111110: next_decode_ope = NOP;
-          `REGSIZE'b11111111: next_decode_ope = HLT;
-          default:            next_decode_ope = HLT;
+        `REGSIZE'b1100????: next_decode_ope = JMP;
+
+        `REGSIZE'b111?00??: next_decode_ope = PUSH;
+        `REGSIZE'b111?01??: next_decode_ope = POP;
+
+        `REGSIZE'b11111110: next_decode_ope = NOP;
+        `REGSIZE'b11111111: next_decode_ope = HLT;
+        default:            next_decode_ope = HLT;
+      endcase
+      default: next_decode_ope = decode_ope;
+    endcase
+  end
+
+  OPERAND_TYPE next_decode_src;
+  always_comb begin
+    unique case (stage)
+      DECODE: unique casez (ope)
+        // (MOV, ADD) a a
+        `REGSIZE'b00??00??: next_decode_dst = REG_A;
+        `REGSIZE'b00??01??: next_decode_dst = ADDRESS_REG_A;
+        `REGSIZE'b00??10??: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b00??11??: next_decode_dst = IMM; // TODO
+
+        // (MOV, ADD) sp sp
+        `REGSIZE'b01??00??: next_decode_dst = REG_SP;
+        `REGSIZE'b01??01??: next_decode_dst = ADDRESS_REG_SP;
+        `REGSIZE'b01??10??: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b01??11??: next_decode_dst = IMM; // TODO
+
+        // (MOV, ADD) sp a
+        `REGSIZE'b10??00??: next_decode_dst = REG_SP;
+        `REGSIZE'b10??01??: next_decode_dst = ADDRESS_REG_SP;
+        `REGSIZE'b10??10??: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b10??11??: next_decode_dst = IMM; // TODO
+
+        // PUSH a
+        `REGSIZE'b111?00??: next_decode_dst = ADDRESS_REG_SP;
+
+        // POP a
+        `REGSIZE'b11100100: next_decode_dst = REG_A;
+        `REGSIZE'b11100101: next_decode_dst = ADDRESS_REG_A;
+        `REGSIZE'b11100110: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b11100111: next_decode_dst = IMM;
+
+        // POP sp
+        `REGSIZE'b11110100: next_decode_dst = REG_SP;
+        `REGSIZE'b11110101: next_decode_dst = ADDRESS_REG_SP;
+        `REGSIZE'b11110110: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b11110111: next_decode_dst = IMM;
+
+        default:            next_decode_dst = UNUSED;
         endcase
+      default: next_decode_src = decode_src;
+    endcase
+  end
 
-        unique casez (ope)
-          `REGSIZE'b00??00??: next_decode_dst = REG_A;
-          `REGSIZE'b00??01??: next_decode_dst = ADDRESS_REG_A;
-          `REGSIZE'b00??10??: next_decode_dst = ADDRESS_IMM;
-          `REGSIZE'b00??11??: next_decode_dst = IMM; // TODO
+  OPERAND_TYPE next_decode_dst;
+  always_comb begin
+    unique case (stage)
+      DECODE: unique casez (ope)
+        // (MOV, ADD) a a
+        `REGSIZE'b00????00: next_decode_src = REG_A;
+        `REGSIZE'b00????01: next_decode_src = ADDRESS_REG_A;
+        `REGSIZE'b00????10: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b00????11: next_decode_src = IMM;
 
-          `REGSIZE'b01??00??: next_decode_dst = REG_SP;
-          `REGSIZE'b01??01??: next_decode_dst = ADDRESS_REG_SP;
-          `REGSIZE'b01??10??: next_decode_dst = ADDRESS_IMM;
-          `REGSIZE'b01??11??: next_decode_dst = IMM; // TODO
+        // (MOV, ADD) sp a
+        `REGSIZE'b10????00: next_decode_src = REG_A;
+        `REGSIZE'b10????01: next_decode_src = ADDRESS_REG_A;
+        `REGSIZE'b10????10: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b10????11: next_decode_src = IMM;
 
-          `REGSIZE'b10??00??: next_decode_dst = REG_SP;
-          `REGSIZE'b10??01??: next_decode_dst = ADDRESS_REG_SP;
-          `REGSIZE'b10??10??: next_decode_dst = ADDRESS_IMM;
-          `REGSIZE'b10??11??: next_decode_dst = IMM; // TODO
+        // (MOV, ADD) sp sp
+        `REGSIZE'b01????00: next_decode_src = REG_SP;
+        `REGSIZE'b01????01: next_decode_src = ADDRESS_REG_SP;
+        `REGSIZE'b01????10: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b01????11: next_decode_src = IMM;
 
-          default:            next_decode_dst = UNUSED;
+         // PUSH a
+        `REGSIZE'b11100000: next_decode_src = REG_A;
+        `REGSIZE'b11100001: next_decode_src = ADDRESS_REG_A;
+        `REGSIZE'b11100010: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b11100011: next_decode_src = IMM;
+
+        // PUSH sp
+        `REGSIZE'b11110000: next_decode_src = REG_SP;
+        `REGSIZE'b11110001: next_decode_src = ADDRESS_REG_SP;
+        `REGSIZE'b11110010: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b11110011: next_decode_src = IMM;
+
+        // POP ?
+        `REGSIZE'b111?01??: next_decode_dst = ADDRESS_REG_SP_PREV;
+
+        // JMP
+        `REGSIZE'b1100????: next_decode_src = IMM;
+        default:            next_decode_src = UNUSED;
         endcase
-
-        unique casez (ope)
-          `REGSIZE'b00????00: next_decode_src = REG_A;
-          `REGSIZE'b00????01: next_decode_src = ADDRESS_REG_A;
-          `REGSIZE'b00????10: next_decode_src = ADDRESS_IMM;
-          `REGSIZE'b00????11: next_decode_src = IMM;
-
-          `REGSIZE'b10????00: next_decode_src = REG_A;
-          `REGSIZE'b10????01: next_decode_src = ADDRESS_REG_A;
-          `REGSIZE'b10????10: next_decode_src = ADDRESS_IMM;
-          `REGSIZE'b10????11: next_decode_src = IMM;
-
-          `REGSIZE'b01????00: next_decode_src = REG_SP;
-          `REGSIZE'b01????01: next_decode_src = ADDRESS_REG_SP;
-          `REGSIZE'b01????10: next_decode_src = ADDRESS_IMM;
-          `REGSIZE'b01????11: next_decode_src = IMM;
-
-          `REGSIZE'b1100????: next_decode_src = IMM; // JMP
-          default:            next_decode_src = UNUSED;
-        endcase
-      end
-
-      default: begin
-        next_decode_ope = decode_ope;
-        next_decode_src = decode_src;
-        next_decode_dst = decode_dst;
-      end
+      default: next_decode_dst = decode_dst;
     endcase
   end
 
