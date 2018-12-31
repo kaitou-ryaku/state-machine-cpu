@@ -4,11 +4,13 @@
 `define MEMSIZE 128
 `define ROMSIZE 64
 `define REGSIZE 8
+`define EXTEND_REGSIZE 9
 `define STACK_UNIT `REGSIZE'd1
 
 `define BYTE_NOP_OPECODE `REGSIZE'b11111110
 
 typedef logic [`REGSIZE-1:0] DEFAULT_TYPE;
+typedef logic [`EXTEND_REGSIZE-1:0] EXTEND_DEFAULT_TYPE;
 
 typedef enum logic [2:0] {
   RESET_STAGE
@@ -42,7 +44,7 @@ typedef enum logic [3:0] {
   , LOAD_DST
 } STAGE_FETCH_IMMEDIATE_TYPE;
 
-typedef enum logic [3:0] {ADD, MOV, HLT, JMP, NOP, PUSH, POP} OPECODE_TYPE;
+typedef enum logic [3:0] {ADD, CMP, MOV, HLT, JMP, NOP, PUSH, POP} OPECODE_TYPE;
 
 typedef enum logic [3:0] {
   REG_A
@@ -63,5 +65,11 @@ typedef enum logic [1:0] {
   , BGN_WRITE_MEMORY
   , END_WRITE_MEMORY
 } STAGE_WRITE_MEMORY_TYPE;
+
+`define FLAG_CARRY     0
+`define FLAG_ZERO      1
+`define FLAG_SIGN      2
+`define FLAG_OVERFLOW  3
+`define FLAG_UNDERFLOW 4
 
 `endif

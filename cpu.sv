@@ -22,7 +22,7 @@ module cpu(/*{{{*/
   OPERAND_TYPE decode_src, decode_dst;
   decoder decoder0(.*);
 
-  DEFAULT_TYPE register_a, register_sp;
+  DEFAULT_TYPE register_a, register_sp, register_flag;
   DEFAULT_TYPE imm;
   DEFAULT_TYPE mem_src, imm_src_addr;
   DEFAULT_TYPE mem_dst, imm_dst_addr;
@@ -35,7 +35,7 @@ module cpu(/*{{{*/
   DEFAULT_TYPE original_dst;
   update_original_dst update_original_dst0(.*);
 
-  DEFAULT_TYPE dst;
+  DEFAULT_TYPE dst, dst_register_flag;;
 
   alu alu0(.*);
 
@@ -66,6 +66,13 @@ module cpu(/*{{{*/
   );
 
   assign OUT = register_a;
+
+  logic flag_carry, flag_zero, flag_sign, flag_overflow, flag_underflow;
+  assign flag_carry     = register_flag[`FLAG_CARRY];
+  assign flag_zero      = register_flag[`FLAG_ZERO];
+  assign flag_sign      = register_flag[`FLAG_SIGN];
+  assign flag_overflow  = register_flag[`FLAG_OVERFLOW];
+  assign flag_underflow = register_flag[`FLAG_UNDERFLOW];
 endmodule/*}}}*/
 
 module decoder(/*{{{*/
@@ -240,29 +247,87 @@ module alu(/*{{{*/
   , input  DEFAULT_TYPE src
   , input  DEFAULT_TYPE original_dst
   , output DEFAULT_TYPE dst
+  , input  DEFAULT_TYPE register_flag
+  , output DEFAULT_TYPE dst_register_flag
 );
+
+  // dst(src1) = original_dst(src1) ? src(src2)
+  EXTEND_DEFAULT_TYPE u_ex_src1, u_ex_src2, u_ex_inv2;
+  EXTEND_DEFAULT_TYPE s_ex_src1, s_ex_src2, s_ex_inv2;
+
+  assign u_ex_src1 = {1'b0, original_dst};
+  assign u_ex_src2 = {1'b0, src};
+  assign u_ex_inv2 = ~(u_ex_src2) + `EXTEND_REGSIZE'b1;
+
+  assign s_ex_src1 = {original_dst[`REGSIZE-1], original_dst};
+  assign s_ex_src2 = {src[`REGSIZE-1], src};
+  assign s_ex_inv2 = ~(s_ex_src2) + `EXTEND_REGSIZE'b1;
+
+  EXTEND_DEFAULT_TYPE u_ex_dst;
+  always_comb begin
+    unique case (decode_ope)
+      ADD:     u_ex_dst = u_ex_src1 + u_ex_src2;
+      CMP:     u_ex_dst = u_ex_src1 + u_ex_inv2;
+      MOV:     u_ex_dst = u_ex_src2;
+      PUSH:    u_ex_dst = u_ex_src2;
+      POP:     u_ex_dst = u_ex_src2;
+      HLT:     u_ex_dst = u_ex_src1;
+      default: u_ex_dst = u_ex_src1;
+    endcase
+  end
+
+  EXTEND_DEFAULT_TYPE s_ex_dst;
+  always_comb begin
+    unique case (decode_ope)
+      ADD:     s_ex_dst = s_ex_src1 + s_ex_src2;
+      CMP:     s_ex_dst = s_ex_src1 + s_ex_inv2;
+      MOV:     s_ex_dst = s_ex_src2;
+      PUSH:    s_ex_dst = s_ex_src2;
+      POP:     s_ex_dst = s_ex_src2;
+      HLT:     s_ex_dst = s_ex_src1;
+      default: s_ex_dst = s_ex_src1;
+    endcase
+  end
+
+  logic carry, zero, sign, overflow, underflow;
+  assign carry     = u_ex_dst[`EXTEND_REGSIZE-1];
+  assign zero      = ~(|(u_ex_dst[`REGSIZE-1:0]));
+  assign sign      = u_ex_dst[`REGSIZE-1];
+  assign overflow  = ((u_ex_dst[`EXTEND_REGSIZE-1] == 1'b0) & (u_ex_dst[`REGSIZE-1] == 1'b1)) ? 1'b1 : 1'b0;
+  assign underflow = ((u_ex_dst[`EXTEND_REGSIZE-1] == 1'b1) & (u_ex_dst[`REGSIZE-1] == 1'b0)) ? 1'b1 : 1'b0;
+
+  DEFAULT_TYPE flag;
+  assign flag = {carry, zero, sign, overflow, underflow, 1'b0, 1'b0, 1'b0};
 
   DEFAULT_TYPE next_dst;
   always_comb begin
     unique case (stage)
-      EXECUTE: begin
-        unique case (decode_ope)
-          ADD:     next_dst = original_dst+src;
-          MOV:     next_dst = src;
-          PUSH:    next_dst = src;
-          POP:     next_dst = src;
-          HLT:     next_dst = original_dst;
-          default: next_dst = original_dst;
-        endcase
-      end
+      EXECUTE: unique case (decode_ope)
+        CMP:     next_dst = dst;
+        default: next_dst = u_ex_dst[`REGSIZE-1:0];
+      endcase
+      default:   next_dst = dst;
+    endcase
+  end
 
-      default: next_dst = dst;
+  DEFAULT_TYPE next_flag;
+  always_comb begin
+    unique case (stage)
+      EXECUTE: unique case (decode_ope)
+        ADD:     next_flag = flag;
+        CMP:     next_flag = flag;
+        default: next_flag = register_flag;
+      endcase
+      default:   next_flag = register_flag;
     endcase
   end
 
   always_ff @(posedge CLOCK) begin
-    unique if (RESET) dst <= `REGSIZE'b0;
+    unique if (RESET) dst <= `REGSIZE'd0;
     else dst <= next_dst;
+
+    unique if (RESET) dst_register_flag <= `REGSIZE'd0;
+    else dst_register_flag <= next_flag;
   end
 
 endmodule/*}}}*/
@@ -342,13 +407,18 @@ module update_register_value(/*{{{*/
   , input  DEFAULT_TYPE dst
   , output DEFAULT_TYPE register_a
   , output DEFAULT_TYPE register_sp
+  , input  DEFAULT_TYPE dst_register_flag
+  , output DEFAULT_TYPE register_flag
 );
 
-  DEFAULT_TYPE next_register_a, next_register_sp;
+  DEFAULT_TYPE next_register_a;
   always_comb begin
-    if ((stage == WRITE_REGISTER) & (decode_dst == REG_A )) next_register_a  = dst;
+    unique if ((stage == WRITE_REGISTER) & (decode_dst == REG_A )) next_register_a  = dst;
     else next_register_a = register_a;
+  end
 
+  DEFAULT_TYPE next_register_sp;
+  always_comb begin
     if (stage == WRITE_REGISTER) begin
       if (decode_dst == REG_SP)    next_register_sp = dst;
       else if (decode_ope == PUSH) next_register_sp = register_sp-`STACK_UNIT;
@@ -357,12 +427,21 @@ module update_register_value(/*{{{*/
     end else next_register_sp = register_sp;
   end
 
+  DEFAULT_TYPE next_register_flag;
+  always_comb begin
+    if (stage == WRITE_REGISTER) next_register_flag = dst_register_flag;
+    else next_register_flag = register_flag;
+  end
+
   always_ff @(posedge CLOCK) begin
     unique if (RESET) register_a <= `REGSIZE'd0;
     else              register_a <= next_register_a;
 
     unique if (RESET) register_sp <= `REGSIZE'd`MEMSIZE;
     else              register_sp <= next_register_sp;
+
+    unique if (RESET) register_flag <= `REGSIZE'd`MEMSIZE;
+    else              register_flag <= next_register_flag;
   end
 endmodule/*}}}*/
 
