@@ -82,18 +82,19 @@ module decoder(/*{{{*/
   always_comb begin
     unique case (stage)
       DECODE: unique casez (ope)
-        `REGSIZE'b00??????: next_decode_ope = MOV;
-        `REGSIZE'b01??????: next_decode_ope = ADD;
+        `REGSIZE'b00_???_???: next_decode_ope = MOV;
+        `REGSIZE'b01_???_???: next_decode_ope = ADD;
 
-        `REGSIZE'b1100????: next_decode_ope = JMP;
-        `REGSIZE'b111?00??: next_decode_ope = PUSH;
-        `REGSIZE'b111?01??: next_decode_ope = POP;
+        `REGSIZE'b11_000_???: next_decode_ope = PUSH;
+        `REGSIZE'b11_001_???: next_decode_ope = POP;
 
-        `REGSIZE'b11111110: next_decode_ope = NOP;
-        `REGSIZE'b11111111: next_decode_ope = HLT;
-        default:            next_decode_ope = HLT;
+        `REGSIZE'b11_010_000: next_decode_ope = JMP;
+
+        `REGSIZE'b11_111_110: next_decode_ope = NOP;
+        `REGSIZE'b11_111_111: next_decode_ope = HLT;
+        default:              next_decode_ope = HLT;
       endcase
-      default: next_decode_ope = decode_ope;
+      default:                next_decode_ope = decode_ope;
     endcase
   end
 
@@ -102,33 +103,31 @@ module decoder(/*{{{*/
     unique case (stage)
       DECODE: unique casez (ope)
         // (MOV, ADD) (a,sp) ?
-        `REGSIZE'b0?000???: next_decode_dst = REG_A;
-        `REGSIZE'b0?001???: next_decode_dst = ADDRESS_REG_A;
-        `REGSIZE'b0?010???: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b0?011???: next_decode_dst = IMM; // TODO
-        `REGSIZE'b0?100???: next_decode_dst = REG_SP;
-        `REGSIZE'b0?101???: next_decode_dst = ADDRESS_REG_SP;
-        `REGSIZE'b0?110???: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b0?111???: next_decode_dst = IMM;
+        `REGSIZE'b0?_000_???: next_decode_dst = REG_A;
+        `REGSIZE'b0?_001_???: next_decode_dst = ADDRESS_REG_A;
+        `REGSIZE'b0?_010_???: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b0?_011_???: next_decode_dst = IMM;
+        `REGSIZE'b0?_100_???: next_decode_dst = REG_SP;
+        `REGSIZE'b0?_101_???: next_decode_dst = ADDRESS_REG_SP;
+        `REGSIZE'b0?_110_???: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b0?_111_???: next_decode_dst = IMM;
 
-        // PUSH a
-        `REGSIZE'b111?00??: next_decode_dst = ADDRESS_REG_SP;
+        // PUSH ?
+        `REGSIZE'b11_000_???: next_decode_dst = ADDRESS_REG_SP;
 
-        // POP a
-        `REGSIZE'b11100100: next_decode_dst = REG_A;
-        `REGSIZE'b11100101: next_decode_dst = ADDRESS_REG_A;
-        `REGSIZE'b11100110: next_decode_dst = UNUSED; // TODO
-        `REGSIZE'b11100111: next_decode_dst = UNUSED; // TODO
+        // POP (a,sp)
+        `REGSIZE'b11_001_000: next_decode_dst = REG_A;
+        `REGSIZE'b11_001_001: next_decode_dst = ADDRESS_REG_A;
+        `REGSIZE'b11_001_010: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b11_001_011: next_decode_dst = IMM;
+        `REGSIZE'b11_001_100: next_decode_dst = REG_SP;
+        `REGSIZE'b11_001_101: next_decode_dst = ADDRESS_REG_SP;
+        `REGSIZE'b11_001_110: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b11_001_111: next_decode_dst = IMM;
 
-        // POP sp
-        `REGSIZE'b11110100: next_decode_dst = REG_SP;
-        `REGSIZE'b11110101: next_decode_dst = ADDRESS_REG_SP;
-        `REGSIZE'b11110110: next_decode_dst = UNUSED; // TODO
-        `REGSIZE'b11110111: next_decode_dst = UNUSED; // TODO
-
-        default:            next_decode_dst = UNUSED;
+        default:              next_decode_dst = UNUSED;
         endcase
-      default: next_decode_dst = decode_dst;
+      default:                next_decode_dst = decode_dst;
     endcase
   end
 
@@ -137,35 +136,33 @@ module decoder(/*{{{*/
     unique case (stage)
       DECODE: unique casez (ope)
         // (MOV, ADD) ? (a,sp)
-        `REGSIZE'b0????000: next_decode_src = REG_A;
-        `REGSIZE'b0????001: next_decode_src = ADDRESS_REG_A;
-        `REGSIZE'b0????010: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b0????011: next_decode_src = IMM; // TODO
-        `REGSIZE'b0????100: next_decode_src = REG_SP;
-        `REGSIZE'b0????101: next_decode_src = ADDRESS_REG_SP;
-        `REGSIZE'b0????110: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b0????111: next_decode_src = IMM;
+        `REGSIZE'b0?_???_000: next_decode_src = REG_A;
+        `REGSIZE'b0?_???_001: next_decode_src = ADDRESS_REG_A;
+        `REGSIZE'b0?_???_010: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b0?_???_011: next_decode_src = IMM; // TODO
+        `REGSIZE'b0?_???_100: next_decode_src = REG_SP;
+        `REGSIZE'b0?_???_101: next_decode_src = ADDRESS_REG_SP;
+        `REGSIZE'b0?_???_110: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b0?_???_111: next_decode_src = IMM;
 
-         // PUSH a
-        `REGSIZE'b11100000: next_decode_src = REG_A;
-        `REGSIZE'b11100001: next_decode_src = ADDRESS_REG_A;
-        `REGSIZE'b11100010: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b11100011: next_decode_src = IMM;
-
-        // PUSH sp
-        `REGSIZE'b11110000: next_decode_src = REG_SP;
-        `REGSIZE'b11110001: next_decode_src = ADDRESS_REG_SP;
-        `REGSIZE'b11110010: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b11110011: next_decode_src = IMM;
+        // PUSH (a,sp)
+        `REGSIZE'b11_000_000: next_decode_src = REG_A;
+        `REGSIZE'b11_000_001: next_decode_src = ADDRESS_REG_A;
+        `REGSIZE'b11_000_010: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b11_000_011: next_decode_src = IMM;
+        `REGSIZE'b11_000_100: next_decode_src = REG_SP;
+        `REGSIZE'b11_000_101: next_decode_src = ADDRESS_REG_SP;
+        `REGSIZE'b11_000_110: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b11_000_111: next_decode_src = IMM;
 
         // POP ?
-        `REGSIZE'b111?01??: next_decode_src = ADDRESS_REG_SP;
+        `REGSIZE'b11_001_???: next_decode_src = ADDRESS_REG_SP;
 
         // JMP
-        `REGSIZE'b1100????: next_decode_src = IMM;
-        default:            next_decode_src = UNUSED;
+        `REGSIZE'b11_01?_???: next_decode_src = IMM;
+        default:              next_decode_src = UNUSED;
         endcase
-      default: next_decode_src = decode_src;
+      default:                next_decode_src = decode_src;
     endcase
   end
 
