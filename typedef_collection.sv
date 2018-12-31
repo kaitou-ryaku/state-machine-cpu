@@ -4,6 +4,7 @@
 `define MEMSIZE 128
 `define ROMSIZE 64
 `define REGSIZE 8
+`define STACK_UNIT `REGSIZE'd1
 
 `define BYTE_NOP_OPECODE `REGSIZE'b11111110
 
@@ -47,8 +48,9 @@ typedef enum logic [3:0] {
   REG_A
   , REG_SP
   , ADDRESS_REG_A
+  , ADDRESS_REG_SP_PUSH
+  , ADDRESS_REG_SP_POP
   , ADDRESS_REG_SP
-  , ADDRESS_REG_SP_PREV
   , ADDRESS_IMM
   , IMM
   , UNUSED

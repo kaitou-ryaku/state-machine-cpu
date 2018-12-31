@@ -82,13 +82,10 @@ module decoder(/*{{{*/
   always_comb begin
     unique case (stage)
       DECODE: unique casez (ope)
-        `REGSIZE'b0?00????: next_decode_ope = MOV;
-        `REGSIZE'b0?01????: next_decode_ope = ADD;
-        `REGSIZE'b1000????: next_decode_ope = MOV;
-        `REGSIZE'b1001????: next_decode_ope = ADD;
+        `REGSIZE'b00??????: next_decode_ope = MOV;
+        `REGSIZE'b01??????: next_decode_ope = ADD;
 
         `REGSIZE'b1100????: next_decode_ope = JMP;
-
         `REGSIZE'b111?00??: next_decode_ope = PUSH;
         `REGSIZE'b111?01??: next_decode_ope = POP;
 
@@ -104,23 +101,15 @@ module decoder(/*{{{*/
   always_comb begin
     unique case (stage)
       DECODE: unique casez (ope)
-        // (MOV, ADD) a a
-        `REGSIZE'b00??00??: next_decode_dst = REG_A;
-        `REGSIZE'b00??01??: next_decode_dst = ADDRESS_REG_A;
-        `REGSIZE'b00??10??: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b00??11??: next_decode_dst = IMM; // TODO
-
-        // (MOV, ADD) sp sp
-        `REGSIZE'b01??00??: next_decode_dst = REG_SP;
-        `REGSIZE'b01??01??: next_decode_dst = ADDRESS_REG_SP;
-        `REGSIZE'b01??10??: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b01??11??: next_decode_dst = IMM; // TODO
-
-        // (MOV, ADD) sp a
-        `REGSIZE'b10??00??: next_decode_dst = REG_SP;
-        `REGSIZE'b10??01??: next_decode_dst = ADDRESS_REG_SP;
-        `REGSIZE'b10??10??: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b10??11??: next_decode_dst = IMM; // TODO
+        // (MOV, ADD) (a,sp) ?
+        `REGSIZE'b0?000???: next_decode_dst = REG_A;
+        `REGSIZE'b0?001???: next_decode_dst = ADDRESS_REG_A;
+        `REGSIZE'b0?010???: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b0?011???: next_decode_dst = IMM; // TODO
+        `REGSIZE'b0?100???: next_decode_dst = REG_SP;
+        `REGSIZE'b0?101???: next_decode_dst = ADDRESS_REG_SP;
+        `REGSIZE'b0?110???: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b0?111???: next_decode_dst = IMM;
 
         // PUSH a
         `REGSIZE'b111?00??: next_decode_dst = ADDRESS_REG_SP;
@@ -147,23 +136,15 @@ module decoder(/*{{{*/
   always_comb begin
     unique case (stage)
       DECODE: unique casez (ope)
-        // (MOV, ADD) a a
-        `REGSIZE'b00????00: next_decode_src = REG_A;
-        `REGSIZE'b00????01: next_decode_src = ADDRESS_REG_A;
-        `REGSIZE'b00????10: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b00????11: next_decode_src = IMM;
-
-        // (MOV, ADD) sp a
-        `REGSIZE'b10????00: next_decode_src = REG_A;
-        `REGSIZE'b10????01: next_decode_src = ADDRESS_REG_A;
-        `REGSIZE'b10????10: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b10????11: next_decode_src = IMM;
-
-        // (MOV, ADD) sp sp
-        `REGSIZE'b01????00: next_decode_src = REG_SP;
-        `REGSIZE'b01????01: next_decode_src = ADDRESS_REG_SP;
-        `REGSIZE'b01????10: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b01????11: next_decode_src = IMM;
+        // (MOV, ADD) ? (a,sp)
+        `REGSIZE'b0????000: next_decode_src = REG_A;
+        `REGSIZE'b0????001: next_decode_src = ADDRESS_REG_A;
+        `REGSIZE'b0????010: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b0????011: next_decode_src = IMM; // TODO
+        `REGSIZE'b0????100: next_decode_src = REG_SP;
+        `REGSIZE'b0????101: next_decode_src = ADDRESS_REG_SP;
+        `REGSIZE'b0????110: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b0????111: next_decode_src = IMM;
 
          // PUSH a
         `REGSIZE'b11100000: next_decode_src = REG_A;
@@ -178,7 +159,7 @@ module decoder(/*{{{*/
         `REGSIZE'b11110011: next_decode_src = IMM;
 
         // POP ?
-        `REGSIZE'b111?01??: next_decode_src = ADDRESS_REG_SP_PREV;
+        `REGSIZE'b111?01??: next_decode_src = ADDRESS_REG_SP;
 
         // JMP
         `REGSIZE'b1100????: next_decode_src = IMM;
@@ -213,13 +194,13 @@ module decoder_src(/*{{{*/
 
   always_comb begin
     unique case (decode_src)
-      REG_A:          src = register_a;
-      REG_SP:         src = register_sp;
-      ADDRESS_REG_A:  src = mem_src;
-      ADDRESS_REG_SP: src = mem_src;
-      ADDRESS_IMM:    src = mem_src;
-      IMM:            src = imm;
-      default:        src = `REGSIZE'd0;
+      REG_A:               src = register_a;
+      REG_SP:              src = register_sp;
+      ADDRESS_REG_A:       src = mem_src;
+      ADDRESS_REG_SP:      src = mem_src;
+      ADDRESS_IMM:         src = mem_src;
+      IMM:                 src = imm;
+      default:             src = `REGSIZE'd0;
     endcase
   end
 
@@ -239,12 +220,12 @@ module update_original_dst(/*{{{*/
   DEFAULT_TYPE next_original_dst;
   always_comb begin
     unique case (decode_dst)
-      REG_A:          next_original_dst = register_a;
-      REG_SP:         next_original_dst = register_sp;
-      ADDRESS_REG_A:  next_original_dst = mem_dst;
-      ADDRESS_REG_SP: next_original_dst = mem_dst;
-      ADDRESS_IMM:    next_original_dst = mem_dst;
-      default:        next_original_dst = `REGSIZE'd0;
+      REG_A:               next_original_dst = register_a;
+      REG_SP:              next_original_dst = register_sp;
+      ADDRESS_REG_A:       next_original_dst = mem_dst;
+      ADDRESS_REG_SP:      next_original_dst = mem_dst;
+      ADDRESS_IMM:         next_original_dst = mem_dst;
+      default:             next_original_dst = `REGSIZE'd0;
     endcase
   end
 
@@ -310,7 +291,6 @@ module update_stage(/*{{{*/
   , input STAGE_FETCH_OPERATION_TYPE stage_fetch_operation
   , input STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate
   , input STAGE_WRITE_MEMORY_TYPE    stage_write_memory
-  , input OPECODE_TYPE decode_ope
   , input OPERAND_TYPE decode_src
   , input OPERAND_TYPE decode_dst
   , output STAGE_TYPE stage
@@ -333,20 +313,17 @@ module update_stage(/*{{{*/
         default:             next_stage = FETCH_IMMEDIATE;
       endcase
 
-      EXECUTE: unique case (decode_dst)
-        REG_A, REG_SP: next_stage = WRITE_REGISTER;
-        ADDRESS_IMM:   next_stage = WRITE_MEMORY;
-        default:       next_stage = FETCH_OPERATION;
+      EXECUTE: next_stage = WRITE_REGISTER;
+
+      WRITE_REGISTER: unique case (decode_dst)
+        ADDRESS_IMM:         next_stage = WRITE_MEMORY;
+        ADDRESS_REG_SP:      next_stage = WRITE_MEMORY;
+        default:             next_stage = FETCH_OPERATION;
       endcase
 
-      WRITE_REGISTER: next_stage = FETCH_OPERATION;
-
       WRITE_MEMORY: unique case (stage_write_memory)
-        END_WRITE_MEMORY: unique case (decode_ope)
-          PUSH:    next_stage = WRITE_REGISTER; // update sp
-          default: next_stage = FETCH_OPERATION;
-        endcase
-        default:   next_stage = WRITE_MEMORY;
+        END_WRITE_MEMORY:    next_stage = FETCH_OPERATION;
+        default:             next_stage = WRITE_MEMORY;
       endcase
 
       default: next_stage = FETCH_OPERATION;
@@ -377,8 +354,8 @@ module update_register_value(/*{{{*/
 
     if (stage == WRITE_REGISTER) begin
       if (decode_dst == REG_SP)    next_register_sp = dst;
-      else if (decode_ope == PUSH) next_register_sp = register_sp-`REGSIZE'd1;
-      else if (decode_ope == POP)  next_register_sp = register_sp+`REGSIZE'd1;
+      else if (decode_ope == PUSH) next_register_sp = register_sp-`STACK_UNIT;
+      else if (decode_ope == POP)  next_register_sp = register_sp+`STACK_UNIT;
       else next_register_sp = register_sp;
     end else next_register_sp = register_sp;
   end
@@ -757,7 +734,6 @@ module update_stage_fetch_immediate(/*{{{*/
           WAIT_SRC, LOAD_SRC: unique case (decode_src)
             ADDRESS_REG_A:       addr = register_a;
             ADDRESS_REG_SP:      addr = register_sp;
-            ADDRESS_REG_SP_PREV: addr = register_sp+`REGSIZE'd1;
             ADDRESS_IMM:         addr = imm_src_addr;
           endcase
 

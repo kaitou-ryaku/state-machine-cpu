@@ -8,32 +8,23 @@ HDL codes are written in System Verilog.
 
 |mnemonic   |binary    |bit  |explanation         |
 |:----------|:---------|:----|:-------------------|
-|mov @a, $a |0000 xx yy|8/16 |@a  = $a            |
-|add @a, $a |0001 xx yy|8/16 |@a  = $a + @a       |
-|mov @sp,$sp|0010 xx yy|8/16 |@sp = $sp           |
-|add @sp,$sp|0011 xx yy|8/16 |@sp = $a + @sp      |
-|mov @sp,$a |0010 xx yy|8/16 |@sp = $a            |
-|add @sp,$a |0011 xx yy|8/16 |@sp = $a + @sp      |
-|push a     |1110 00 a |8/16 |mov [sp], a   ; sp--|
-|push sp    |1111 00 sp|8/16 |mov [sp], sp  ; sp--|
-|pop a      |1110 01 a |8/16 |mov a , [sp+1]; sp++|
-|pop sp     |1111 01 sp|8/16 |mov sp, [sp+1]; sp++|
-|jmp imm    |1100 ?? ??|16   |                    |
+|mov x, y   |00 xxx yyy|8/16 |x = y               |
+|add x, y   |01 xxx yyy|8/16 |x = x + y           |
+|push x     |1100 0 xxx|8/16 |sp-- ; mov [sp], x  |
+|pop x      |1100 1 xxx|8/16 |mov x, [sp] ; sp++  |
+|jmp imm    |1101 ?? ??|16   |                    |
 |hlt        |1111 ?? ??|8    |stop                |
 
-|$a      |binary|
-|:-------|:-----|
-|a       |00    |
-|[a]     |01    |
-|[imm]   |10    |
-|imm     |11    |
-
-|@a      |binary|
-|:-------|:-----|
-|a       |00    |
-|[a]     |01    |
-|[imm]   |10    |
-|UNUSED  |11    |
+|xxx  |bin|
+|:----|:--|
+|a    |000|
+|[a]  |001|
+|[imm]|010|
+|imm  |011|
+|sp   |100|
+|[sp] |101|
+|[imm]|110|
+|imm  |111|
 
 ### Vivado
 
