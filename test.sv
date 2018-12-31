@@ -54,6 +54,7 @@ module test_cpu();
     //RESET = 1'b0;
 
     #400;
+    #1000;
     $stop;
   end
 

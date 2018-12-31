@@ -91,6 +91,7 @@ module decoder(/*{{{*/
       DECODE: unique casez (ope)
         `REGSIZE'b00_???_???: next_decode_ope = MOV;
         `REGSIZE'b01_???_???: next_decode_ope = ADD;
+        `REGSIZE'b10_???_???: next_decode_ope = CMP;
 
         `REGSIZE'b11_000_???: next_decode_ope = PUSH;
         `REGSIZE'b11_001_???: next_decode_ope = POP;
@@ -118,6 +119,16 @@ module decoder(/*{{{*/
         `REGSIZE'b0?_101_???: next_decode_dst = ADDRESS_REG_SP;
         `REGSIZE'b0?_110_???: next_decode_dst = ADDRESS_IMM;
         `REGSIZE'b0?_111_???: next_decode_dst = IMM;
+
+        // CMP (a,sp) ?
+        `REGSIZE'b10_000_???: next_decode_dst = REG_A;
+        `REGSIZE'b10_001_???: next_decode_dst = ADDRESS_REG_A;
+        `REGSIZE'b10_010_???: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b10_011_???: next_decode_dst = IMM;
+        `REGSIZE'b10_100_???: next_decode_dst = REG_SP;
+        `REGSIZE'b10_101_???: next_decode_dst = ADDRESS_REG_SP;
+        `REGSIZE'b10_110_???: next_decode_dst = ADDRESS_IMM;
+        `REGSIZE'b10_111_???: next_decode_dst = IMM;
 
         // PUSH ?
         `REGSIZE'b11_000_???: next_decode_dst = ADDRESS_REG_SP;
@@ -151,6 +162,16 @@ module decoder(/*{{{*/
         `REGSIZE'b0?_???_101: next_decode_src = ADDRESS_REG_SP;
         `REGSIZE'b0?_???_110: next_decode_src = ADDRESS_IMM;
         `REGSIZE'b0?_???_111: next_decode_src = IMM;
+
+        // CMP ? (a,sp)
+        `REGSIZE'b10_???_000: next_decode_src = REG_A;
+        `REGSIZE'b10_???_001: next_decode_src = ADDRESS_REG_A;
+        `REGSIZE'b10_???_010: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b10_???_011: next_decode_src = IMM; // TODO
+        `REGSIZE'b10_???_100: next_decode_src = REG_SP;
+        `REGSIZE'b10_???_101: next_decode_src = ADDRESS_REG_SP;
+        `REGSIZE'b10_???_110: next_decode_src = ADDRESS_IMM;
+        `REGSIZE'b10_???_111: next_decode_src = IMM;
 
         // PUSH (a,sp)
         `REGSIZE'b11_000_000: next_decode_src = REG_A;
@@ -247,7 +268,6 @@ module alu(/*{{{*/
   , input  DEFAULT_TYPE src
   , input  DEFAULT_TYPE original_dst
   , output DEFAULT_TYPE dst
-  , input  DEFAULT_TYPE register_flag
   , output DEFAULT_TYPE dst_register_flag
 );
 
@@ -297,7 +317,7 @@ module alu(/*{{{*/
   assign underflow = ((u_ex_dst[`EXTEND_REGSIZE-1] == 1'b1) & (u_ex_dst[`REGSIZE-1] == 1'b0)) ? 1'b1 : 1'b0;
 
   DEFAULT_TYPE flag;
-  assign flag = {carry, zero, sign, overflow, underflow, 1'b0, 1'b0, 1'b0};
+  assign flag = {1'b0, 1'b0, 1'b0, underflow, overflow, sign, zero, carry};
 
   DEFAULT_TYPE next_dst;
   always_comb begin
@@ -316,9 +336,9 @@ module alu(/*{{{*/
       EXECUTE: unique case (decode_ope)
         ADD:     next_flag = flag;
         CMP:     next_flag = flag;
-        default: next_flag = register_flag;
+        default: next_flag = dst_register_flag;
       endcase
-      default:   next_flag = register_flag;
+      default:   next_flag = dst_register_flag;
     endcase
   end
 
