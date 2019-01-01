@@ -4,16 +4,38 @@ This repository is for Xilinx Artix-7 35T Arty FPGA Evaluation Kit.
 
 HDL codes are written in System Verilog.
 
+### Register
+
+##### Genaral Register
+|name|size |
+|:---|:----|
+|a   |8 bit|
+|sp  |8 bit|
+|flag|8 bit|
+
+##### Flag Register
+
+|name      |index|symbol|
+|:---------|:----|:-----|
+|carry     |0    |c     |
+|zero      |1    |z     |
+|sign      |2    |s     |
+|overflow  |3    |o     |
+|underflow |4    |u     |
+|UNUSED    |5-7  |      |
+
 ### Instruction
 
 |mnemonic   |binary    |bit  |explanation         |
 |:----------|:---------|:----|:-------------------|
 |mov x, y   |00 xxx yyy|8/16 |x = y               |
 |add x, y   |01 xxx yyy|8/16 |x = x + y           |
+|cmp x, y   |10 xxx yyy|8/16 |x = x + y           |
 |push x     |1100 0 xxx|8/16 |sp-- ; mov [sp], x  |
 |pop x      |1100 1 xxx|8/16 |mov x, [sp] ; sp++  |
-|jmp imm    |1101 ?? ??|16   |                    |
-|hlt        |1111 ?? ??|8    |stop                |
+|jmp imm    |1101 ???? |16   |                    |
+|jcc imm    |1110 cccc |16   |                    |
+|hlt        |1111 ???? |8    |stop                |
 
 |xxx  |bin|
 |:----|:--|
@@ -25,6 +47,25 @@ HDL codes are written in System Verilog.
 |[sp] |101|
 |[imm]|110|
 |imm  |111|
+
+|jcc  |bin |explanation|
+|:----|:---|:----------|
+|jo   |0000|o=1        |
+|jno  |0001|o=0        |
+|jc   |0010|c=1        |
+|jnc  |0011|c=0        |
+|jz   |0100|z=1        |
+|jnz  |0101|z=0        |
+|jbe  |0110|c=1 or  z=1|
+|ja   |0111|c=0 and z=0|
+|js   |1000|s=1        |
+|jns  |1001|s=0        |
+|jp   |1010|TODO       |
+|jnp  |1011|TODO       |
+|jl   |1100|s!o        |
+|jge  |1101|s=o        |
+|jle  |1110|z=1 or  s!o|
+|jg   |1111|z!1 and s=o|
 
 ### Vivado
 
