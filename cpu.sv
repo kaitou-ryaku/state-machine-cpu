@@ -98,6 +98,23 @@ module decoder(/*{{{*/
 
         `REGSIZE'b11_010_000: next_decode_ope = JMP;
 
+        `REGSIZE'b11_100_000: next_decode_ope = JO;
+        `REGSIZE'b11_100_001: next_decode_ope = JNO;
+        `REGSIZE'b11_100_010: next_decode_ope = JC;
+        `REGSIZE'b11_100_011: next_decode_ope = JNC;
+        `REGSIZE'b11_100_100: next_decode_ope = JZ;
+        `REGSIZE'b11_100_101: next_decode_ope = JNZ;
+        `REGSIZE'b11_100_110: next_decode_ope = JBE;
+        `REGSIZE'b11_100_111: next_decode_ope = JA;
+        `REGSIZE'b11_101_000: next_decode_ope = JS;
+        `REGSIZE'b11_101_001: next_decode_ope = JNS;
+        `REGSIZE'b11_101_010: next_decode_ope = JP;
+        `REGSIZE'b11_101_011: next_decode_ope = JNP;
+        `REGSIZE'b11_101_100: next_decode_ope = JL;
+        `REGSIZE'b11_101_101: next_decode_ope = JGE;
+        `REGSIZE'b11_101_110: next_decode_ope = JLE;
+        `REGSIZE'b11_101_111: next_decode_ope = JG;
+
         `REGSIZE'b11_111_110: next_decode_ope = NOP;
         `REGSIZE'b11_111_111: next_decode_ope = HLT;
         default:              next_decode_ope = HLT;
@@ -188,6 +205,10 @@ module decoder(/*{{{*/
 
         // JMP
         `REGSIZE'b11_01?_???: next_decode_src = IMM;
+
+        // JCC
+        `REGSIZE'b11_10?_???: next_decode_src = IMM;
+
         default:              next_decode_src = UNUSED;
         endcase
       default:                next_decode_src = decode_src;
@@ -355,13 +376,38 @@ endmodule/*}}}*/
 module jmp_addr_bus(/*{{{*/
   input OPECODE_TYPE decode_ope
   , input DEFAULT_TYPE imm
+  , input DEFAULT_TYPE register_flag
   , output DEFAULT_TYPE jmp
 );
+
+  logic cf, zf, sf, of;
+  assign cf = register_flag[`FLAG_CARRY];
+  assign zf = register_flag[`FLAG_ZERO];
+  assign sf = register_flag[`FLAG_SIGN];
+  assign of = register_flag[`FLAG_OVERFLOW];
 
   always_comb begin
     unique case (decode_ope)
       JMP:     jmp = imm;
-      default: jmp = `REGSIZE'b0;
+
+      JO:      jmp = (of == 1'b1)                   ? imm : `REGSIZE'd0;
+      JNO:     jmp = (of == 1'b0)                   ? imm : `REGSIZE'd0;
+      JC:      jmp = (cf == 1'b1)                   ? imm : `REGSIZE'd0;
+      JNC:     jmp = (cf == 1'b0)                   ? imm : `REGSIZE'd0;
+      JZ:      jmp = (zf == 1'b1)                   ? imm : `REGSIZE'd0;
+      JNZ:     jmp = (zf == 1'b0)                   ? imm : `REGSIZE'd0;
+      JBE:     jmp = ((cf == 1'b1) | (zf == 1'b1))  ? imm : `REGSIZE'd0;
+      JA:      jmp = ((cf == 1'b0) & (zf == 1'b0))  ? imm : `REGSIZE'd0;
+      JS:      jmp = (sf == 1'b1)                   ? imm : `REGSIZE'd0;
+      JNS:     jmp = (sf == 1'b0)                   ? imm : `REGSIZE'd0;
+      JP:      jmp = imm; // TODO
+      JNP:     jmp = imm; // TODO
+      JL:      jmp = (sf != of)                     ? imm : `REGSIZE'd0;
+      JGE:     jmp = (sf == of)                     ? imm : `REGSIZE'd0;
+      JLE:     jmp = ((zf == 1'b1) | (sf != of))    ? imm : `REGSIZE'd0;
+      JG:      jmp = ((zf != 1'b1) & (sf == of))    ? imm : `REGSIZE'd0;
+
+      default: jmp = `REGSIZE'd0;
     endcase
   end
 
