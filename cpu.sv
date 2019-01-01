@@ -277,7 +277,7 @@ module alu(/*{{{*/
 
   assign u_ex_src1 = {1'b0, original_dst};
   assign u_ex_src2 = {1'b0, src};
-  assign u_ex_inv2 = ~(u_ex_src2) + `EXTEND_REGSIZE'b1;
+  assign u_ex_inv2 = {1'b0, `REGSIZE'(~(src) + `REGSIZE'b1)};
 
   assign s_ex_src1 = {original_dst[`REGSIZE-1], original_dst};
   assign s_ex_src2 = {src[`REGSIZE-1], src};
@@ -313,8 +313,8 @@ module alu(/*{{{*/
   assign carry     = u_ex_dst[`EXTEND_REGSIZE-1];
   assign zero      = ~(|(u_ex_dst[`REGSIZE-1:0]));
   assign sign      = u_ex_dst[`REGSIZE-1];
-  assign overflow  = ((u_ex_dst[`EXTEND_REGSIZE-1] == 1'b0) & (u_ex_dst[`REGSIZE-1] == 1'b1)) ? 1'b1 : 1'b0;
-  assign underflow = ((u_ex_dst[`EXTEND_REGSIZE-1] == 1'b1) & (u_ex_dst[`REGSIZE-1] == 1'b0)) ? 1'b1 : 1'b0;
+  assign overflow  = ((s_ex_dst[`EXTEND_REGSIZE-1] == 1'b0) & (s_ex_dst[`REGSIZE-1] == 1'b1)) ? 1'b1 : 1'b0;
+  assign underflow = ((s_ex_dst[`EXTEND_REGSIZE-1] == 1'b1) & (s_ex_dst[`REGSIZE-1] == 1'b0)) ? 1'b1 : 1'b0;
 
   DEFAULT_TYPE flag;
   assign flag = {1'b0, 1'b0, 1'b0, underflow, overflow, sign, zero, carry};
