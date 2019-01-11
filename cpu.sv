@@ -18,8 +18,7 @@ module cpu(/*{{{*/
   DEFAULT_TYPE ip;
 
   DEFAULT_TYPE ope;
-  OPECODE_TYPE decode_ope;
-  OPERAND_TYPE decode_src, decode_dst;
+  INSTRUCTION_PACK_TYPE instruction;
   decoder decoder0(.*);
 
   REGISTER_PACK_TYPE register;
@@ -80,157 +79,153 @@ module decoder(/*{{{*/
   , input  logic        RESET
   , input  STAGE_TYPE   stage
   , input  DEFAULT_TYPE ope
-  , output OPECODE_TYPE decode_ope
-  , output OPERAND_TYPE decode_src
-  , output OPERAND_TYPE decode_dst
+  , output INSTRUCTION_PACK_TYPE instruction
 );
 
-  OPECODE_TYPE next_decode_ope;
+  INSTRUCTION_PACK_TYPE next_instruction;
   always_comb begin
     unique case (stage)
       DECODE: unique casez (ope)
-        `REGSIZE'b00_???_???: next_decode_ope = MOV;
-        `REGSIZE'b01_???_???: next_decode_ope = ADD;
-        `REGSIZE'b10_???_???: next_decode_ope = CMP;
+        `REGSIZE'b00_???_???: next_instruction.ope = MOV;
+        `REGSIZE'b01_???_???: next_instruction.ope = ADD;
+        `REGSIZE'b10_???_???: next_instruction.ope = CMP;
 
-        `REGSIZE'b11_000_???: next_decode_ope = PUSH;
-        `REGSIZE'b11_001_???: next_decode_ope = POP;
+        `REGSIZE'b11_000_???: next_instruction.ope = PUSH;
+        `REGSIZE'b11_001_???: next_instruction.ope = POP;
 
-        `REGSIZE'b11_010_000: next_decode_ope = JMP;
+        `REGSIZE'b11_010_000: next_instruction.ope = JMP;
 
-        `REGSIZE'b11_100_000: next_decode_ope = JO;
-        `REGSIZE'b11_100_001: next_decode_ope = JNO;
-        `REGSIZE'b11_100_010: next_decode_ope = JC;
-        `REGSIZE'b11_100_011: next_decode_ope = JNC;
-        `REGSIZE'b11_100_100: next_decode_ope = JZ;
-        `REGSIZE'b11_100_101: next_decode_ope = JNZ;
-        `REGSIZE'b11_100_110: next_decode_ope = JBE;
-        `REGSIZE'b11_100_111: next_decode_ope = JA;
-        `REGSIZE'b11_101_000: next_decode_ope = JS;
-        `REGSIZE'b11_101_001: next_decode_ope = JNS;
-        `REGSIZE'b11_101_010: next_decode_ope = JP;
-        `REGSIZE'b11_101_011: next_decode_ope = JNP;
-        `REGSIZE'b11_101_100: next_decode_ope = JL;
-        `REGSIZE'b11_101_101: next_decode_ope = JGE;
-        `REGSIZE'b11_101_110: next_decode_ope = JLE;
-        `REGSIZE'b11_101_111: next_decode_ope = JG;
+        `REGSIZE'b11_100_000: next_instruction.ope = JO;
+        `REGSIZE'b11_100_001: next_instruction.ope = JNO;
+        `REGSIZE'b11_100_010: next_instruction.ope = JC;
+        `REGSIZE'b11_100_011: next_instruction.ope = JNC;
+        `REGSIZE'b11_100_100: next_instruction.ope = JZ;
+        `REGSIZE'b11_100_101: next_instruction.ope = JNZ;
+        `REGSIZE'b11_100_110: next_instruction.ope = JBE;
+        `REGSIZE'b11_100_111: next_instruction.ope = JA;
+        `REGSIZE'b11_101_000: next_instruction.ope = JS;
+        `REGSIZE'b11_101_001: next_instruction.ope = JNS;
+        `REGSIZE'b11_101_010: next_instruction.ope = JP;
+        `REGSIZE'b11_101_011: next_instruction.ope = JNP;
+        `REGSIZE'b11_101_100: next_instruction.ope = JL;
+        `REGSIZE'b11_101_101: next_instruction.ope = JGE;
+        `REGSIZE'b11_101_110: next_instruction.ope = JLE;
+        `REGSIZE'b11_101_111: next_instruction.ope = JG;
 
-        `REGSIZE'b11_111_110: next_decode_ope = NOP;
-        `REGSIZE'b11_111_111: next_decode_ope = HLT;
-        default:              next_decode_ope = HLT;
+        `REGSIZE'b11_111_110: next_instruction.ope = NOP;
+        `REGSIZE'b11_111_111: next_instruction.ope = HLT;
+        default:              next_instruction.ope = HLT;
       endcase
-      default:                next_decode_ope = decode_ope;
+      default:                next_instruction.ope = instruction.ope;
     endcase
   end
 
-  OPERAND_TYPE next_decode_dst;
   always_comb begin
     unique case (stage)
       DECODE: unique casez (ope)
         // (MOV, ADD) (a,sp) ?
-        `REGSIZE'b0?_000_???: next_decode_dst = REG_A;
-        `REGSIZE'b0?_001_???: next_decode_dst = ADDRESS_REG_A;
-        `REGSIZE'b0?_010_???: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b0?_011_???: next_decode_dst = IMM;
-        `REGSIZE'b0?_100_???: next_decode_dst = REG_SP;
-        `REGSIZE'b0?_101_???: next_decode_dst = ADDRESS_REG_SP;
-        `REGSIZE'b0?_110_???: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b0?_111_???: next_decode_dst = IMM;
+        `REGSIZE'b0?_000_???: next_instruction.dst = REG_A;
+        `REGSIZE'b0?_001_???: next_instruction.dst = ADDRESS_REG_A;
+        `REGSIZE'b0?_010_???: next_instruction.dst = ADDRESS_IMM;
+        `REGSIZE'b0?_011_???: next_instruction.dst = IMM;
+        `REGSIZE'b0?_100_???: next_instruction.dst = REG_SP;
+        `REGSIZE'b0?_101_???: next_instruction.dst = ADDRESS_REG_SP;
+        `REGSIZE'b0?_110_???: next_instruction.dst = ADDRESS_IMM;
+        `REGSIZE'b0?_111_???: next_instruction.dst = IMM;
 
         // CMP (a,sp) ?
-        `REGSIZE'b10_000_???: next_decode_dst = REG_A;
-        `REGSIZE'b10_001_???: next_decode_dst = ADDRESS_REG_A;
-        `REGSIZE'b10_010_???: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b10_011_???: next_decode_dst = IMM;
-        `REGSIZE'b10_100_???: next_decode_dst = REG_SP;
-        `REGSIZE'b10_101_???: next_decode_dst = ADDRESS_REG_SP;
-        `REGSIZE'b10_110_???: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b10_111_???: next_decode_dst = IMM;
+        `REGSIZE'b10_000_???: next_instruction.dst = REG_A;
+        `REGSIZE'b10_001_???: next_instruction.dst = ADDRESS_REG_A;
+        `REGSIZE'b10_010_???: next_instruction.dst = ADDRESS_IMM;
+        `REGSIZE'b10_011_???: next_instruction.dst = IMM;
+        `REGSIZE'b10_100_???: next_instruction.dst = REG_SP;
+        `REGSIZE'b10_101_???: next_instruction.dst = ADDRESS_REG_SP;
+        `REGSIZE'b10_110_???: next_instruction.dst = ADDRESS_IMM;
+        `REGSIZE'b10_111_???: next_instruction.dst = IMM;
 
         // PUSH ?
-        `REGSIZE'b11_000_???: next_decode_dst = ADDRESS_REG_SP;
+        `REGSIZE'b11_000_???: next_instruction.dst = ADDRESS_REG_SP;
 
         // POP (a,sp)
-        `REGSIZE'b11_001_000: next_decode_dst = REG_A;
-        `REGSIZE'b11_001_001: next_decode_dst = ADDRESS_REG_A;
-        `REGSIZE'b11_001_010: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b11_001_011: next_decode_dst = IMM;
-        `REGSIZE'b11_001_100: next_decode_dst = REG_SP;
-        `REGSIZE'b11_001_101: next_decode_dst = ADDRESS_REG_SP;
-        `REGSIZE'b11_001_110: next_decode_dst = ADDRESS_IMM;
-        `REGSIZE'b11_001_111: next_decode_dst = IMM;
+        `REGSIZE'b11_001_000: next_instruction.dst = REG_A;
+        `REGSIZE'b11_001_001: next_instruction.dst = ADDRESS_REG_A;
+        `REGSIZE'b11_001_010: next_instruction.dst = ADDRESS_IMM;
+        `REGSIZE'b11_001_011: next_instruction.dst = IMM;
+        `REGSIZE'b11_001_100: next_instruction.dst = REG_SP;
+        `REGSIZE'b11_001_101: next_instruction.dst = ADDRESS_REG_SP;
+        `REGSIZE'b11_001_110: next_instruction.dst = ADDRESS_IMM;
+        `REGSIZE'b11_001_111: next_instruction.dst = IMM;
 
-        default:              next_decode_dst = UNUSED;
+        default:              next_instruction.dst = UNUSED;
         endcase
-      default:                next_decode_dst = decode_dst;
+      default:                next_instruction.dst = instruction.dst;
     endcase
   end
 
-  OPERAND_TYPE next_decode_src;
   always_comb begin
     unique case (stage)
       DECODE: unique casez (ope)
         // (MOV, ADD) ? (a,sp)
-        `REGSIZE'b0?_???_000: next_decode_src = REG_A;
-        `REGSIZE'b0?_???_001: next_decode_src = ADDRESS_REG_A;
-        `REGSIZE'b0?_???_010: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b0?_???_011: next_decode_src = IMM; // TODO
-        `REGSIZE'b0?_???_100: next_decode_src = REG_SP;
-        `REGSIZE'b0?_???_101: next_decode_src = ADDRESS_REG_SP;
-        `REGSIZE'b0?_???_110: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b0?_???_111: next_decode_src = IMM;
+        `REGSIZE'b0?_???_000: next_instruction.src = REG_A;
+        `REGSIZE'b0?_???_001: next_instruction.src = ADDRESS_REG_A;
+        `REGSIZE'b0?_???_010: next_instruction.src = ADDRESS_IMM;
+        `REGSIZE'b0?_???_011: next_instruction.src = IMM; // TODO
+        `REGSIZE'b0?_???_100: next_instruction.src = REG_SP;
+        `REGSIZE'b0?_???_101: next_instruction.src = ADDRESS_REG_SP;
+        `REGSIZE'b0?_???_110: next_instruction.src = ADDRESS_IMM;
+        `REGSIZE'b0?_???_111: next_instruction.src = IMM;
 
         // CMP ? (a,sp)
-        `REGSIZE'b10_???_000: next_decode_src = REG_A;
-        `REGSIZE'b10_???_001: next_decode_src = ADDRESS_REG_A;
-        `REGSIZE'b10_???_010: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b10_???_011: next_decode_src = IMM; // TODO
-        `REGSIZE'b10_???_100: next_decode_src = REG_SP;
-        `REGSIZE'b10_???_101: next_decode_src = ADDRESS_REG_SP;
-        `REGSIZE'b10_???_110: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b10_???_111: next_decode_src = IMM;
+        `REGSIZE'b10_???_000: next_instruction.src = REG_A;
+        `REGSIZE'b10_???_001: next_instruction.src = ADDRESS_REG_A;
+        `REGSIZE'b10_???_010: next_instruction.src = ADDRESS_IMM;
+        `REGSIZE'b10_???_011: next_instruction.src = IMM; // TODO
+        `REGSIZE'b10_???_100: next_instruction.src = REG_SP;
+        `REGSIZE'b10_???_101: next_instruction.src = ADDRESS_REG_SP;
+        `REGSIZE'b10_???_110: next_instruction.src = ADDRESS_IMM;
+        `REGSIZE'b10_???_111: next_instruction.src = IMM;
 
         // PUSH (a,sp)
-        `REGSIZE'b11_000_000: next_decode_src = REG_A;
-        `REGSIZE'b11_000_001: next_decode_src = ADDRESS_REG_A;
-        `REGSIZE'b11_000_010: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b11_000_011: next_decode_src = IMM;
-        `REGSIZE'b11_000_100: next_decode_src = REG_SP;
-        `REGSIZE'b11_000_101: next_decode_src = ADDRESS_REG_SP;
-        `REGSIZE'b11_000_110: next_decode_src = ADDRESS_IMM;
-        `REGSIZE'b11_000_111: next_decode_src = IMM;
+        `REGSIZE'b11_000_000: next_instruction.src = REG_A;
+        `REGSIZE'b11_000_001: next_instruction.src = ADDRESS_REG_A;
+        `REGSIZE'b11_000_010: next_instruction.src = ADDRESS_IMM;
+        `REGSIZE'b11_000_011: next_instruction.src = IMM;
+        `REGSIZE'b11_000_100: next_instruction.src = REG_SP;
+        `REGSIZE'b11_000_101: next_instruction.src = ADDRESS_REG_SP;
+        `REGSIZE'b11_000_110: next_instruction.src = ADDRESS_IMM;
+        `REGSIZE'b11_000_111: next_instruction.src = IMM;
 
         // POP ?
-        `REGSIZE'b11_001_???: next_decode_src = ADDRESS_REG_SP;
+        `REGSIZE'b11_001_???: next_instruction.src = ADDRESS_REG_SP;
 
         // JMP
-        `REGSIZE'b11_01?_???: next_decode_src = IMM;
+        `REGSIZE'b11_01?_???: next_instruction.src = IMM;
 
         // JCC
-        `REGSIZE'b11_10?_???: next_decode_src = IMM;
+        `REGSIZE'b11_10?_???: next_instruction.src = IMM;
 
-        default:              next_decode_src = UNUSED;
+        default:              next_instruction.src = UNUSED;
         endcase
-      default:                next_decode_src = decode_src;
+      default:                next_instruction.src = instruction.src;
     endcase
   end
 
   always_ff @(posedge CLOCK) begin
     unique if (RESET) begin
-      decode_ope <= NOP;
-      decode_src <= UNUSED;
-      decode_dst <= UNUSED;
+      instruction.ope <= NOP;
+      instruction.src <= UNUSED;
+      instruction.dst <= UNUSED;
     end else begin
-      decode_ope <= next_decode_ope;
-      decode_src <= next_decode_src;
-      decode_dst <= next_decode_dst;
+      instruction.ope <= next_instruction.ope;
+      instruction.src <= next_instruction.src;
+      instruction.dst <= next_instruction.dst;
     end
   end
 
 endmodule/*}}}*/
 
 module decoder_src(/*{{{*/
-  input OPERAND_TYPE decode_src
+  input INSTRUCTION_PACK_TYPE instruction
   , input REGISTER_PACK_TYPE register
   , input DEFAULT_TYPE imm
   , input DEFAULT_TYPE mem_src
@@ -238,7 +233,7 @@ module decoder_src(/*{{{*/
 );
 
   always_comb begin
-    unique case (decode_src)
+    unique case (instruction.src)
       REG_A:               src = register.a;
       REG_SP:              src = register.sp;
       ADDRESS_REG_A:       src = mem_src;
@@ -254,7 +249,7 @@ endmodule/*}}}*/
 module update_original_dst(/*{{{*/
   input    logic        CLOCK
   , input  logic        RESET
-  , input  OPERAND_TYPE decode_dst
+  , input INSTRUCTION_PACK_TYPE instruction
   , input  REGISTER_PACK_TYPE register
   , input  DEFAULT_TYPE imm
   , input  DEFAULT_TYPE mem_dst
@@ -263,7 +258,7 @@ module update_original_dst(/*{{{*/
 
   DEFAULT_TYPE next_original_dst;
   always_comb begin
-    unique case (decode_dst)
+    unique case (instruction.dst)
       REG_A:               next_original_dst = register.a;
       REG_SP:              next_original_dst = register.sp;
       ADDRESS_REG_A:       next_original_dst = mem_dst;
@@ -283,7 +278,7 @@ module alu(/*{{{*/
   input    logic        CLOCK
   , input  logic        RESET
   , input  STAGE_TYPE   stage
-  , input  OPECODE_TYPE decode_ope
+  , input  INSTRUCTION_PACK_TYPE instruction
   , input  DEFAULT_TYPE src
   , input  DEFAULT_TYPE original_dst
   , output DEFAULT_TYPE dst
@@ -304,7 +299,7 @@ module alu(/*{{{*/
 
   EXTEND_DEFAULT_TYPE u_ex_dst;
   always_comb begin
-    unique case (decode_ope)
+    unique case (instruction.ope)
       ADD:     u_ex_dst = u_ex_src1 + u_ex_src2;
       CMP:     u_ex_dst = u_ex_src1 + u_ex_inv2;
       MOV:     u_ex_dst = u_ex_src2;
@@ -317,7 +312,7 @@ module alu(/*{{{*/
 
   EXTEND_DEFAULT_TYPE s_ex_dst;
   always_comb begin
-    unique case (decode_ope)
+    unique case (instruction.ope)
       ADD:     s_ex_dst = s_ex_src1 + s_ex_src2;
       CMP:     s_ex_dst = s_ex_src1 + s_ex_inv2;
       MOV:     s_ex_dst = s_ex_src2;
@@ -341,7 +336,7 @@ module alu(/*{{{*/
   DEFAULT_TYPE next_dst;
   always_comb begin
     unique case (stage)
-      EXECUTE: unique case (decode_ope)
+      EXECUTE: unique case (instruction.ope)
         CMP:     next_dst = dst;
         default: next_dst = u_ex_dst[`REGSIZE-1:0];
       endcase
@@ -352,7 +347,7 @@ module alu(/*{{{*/
   DEFAULT_TYPE next_flag;
   always_comb begin
     unique case (stage)
-      EXECUTE: unique case (decode_ope)
+      EXECUTE: unique case (instruction.ope)
         ADD:     next_flag = flag;
         CMP:     next_flag = flag;
         default: next_flag = dst_register_flag;
@@ -372,7 +367,7 @@ module alu(/*{{{*/
 endmodule/*}}}*/
 
 module jmp_addr_bus(/*{{{*/
-  input OPECODE_TYPE decode_ope
+  input INSTRUCTION_PACK_TYPE instruction
   , input DEFAULT_TYPE imm
   , input REGISTER_PACK_TYPE register
   , output DEFAULT_TYPE jmp
@@ -385,7 +380,7 @@ module jmp_addr_bus(/*{{{*/
   assign of = register.flag[`FLAG_OVERFLOW];
 
   always_comb begin
-    unique case (decode_ope)
+    unique case (instruction.ope)
       JMP:     jmp = imm;
 
       JO:      jmp = (of == 1'b1)                   ? imm : `REGSIZE'd0;
@@ -417,8 +412,7 @@ module update_stage(/*{{{*/
   , input STAGE_FETCH_OPERATION_TYPE stage_fetch_operation
   , input STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate
   , input STAGE_WRITE_MEMORY_TYPE    stage_write_memory
-  , input OPERAND_TYPE decode_src
-  , input OPERAND_TYPE decode_dst
+  , input INSTRUCTION_PACK_TYPE instruction
   , output STAGE_TYPE stage
 );
 
@@ -441,7 +435,7 @@ module update_stage(/*{{{*/
 
       EXECUTE: next_stage = WRITE_REGISTER;
 
-      WRITE_REGISTER: unique case (decode_dst)
+      WRITE_REGISTER: unique case (instruction.dst)
         ADDRESS_IMM:         next_stage = WRITE_MEMORY;
         ADDRESS_REG_SP:      next_stage = WRITE_MEMORY;
         default:             next_stage = FETCH_OPERATION;
@@ -466,8 +460,7 @@ module update_register_value(/*{{{*/
   input    logic        CLOCK
   , input  logic        RESET
   , input  STAGE_TYPE   stage
-  , input  OPECODE_TYPE decode_ope
-  , input  OPERAND_TYPE decode_dst
+  , input  INSTRUCTION_PACK_TYPE instruction
   , input  DEFAULT_TYPE dst
   , output REGISTER_PACK_TYPE register
   , input  DEFAULT_TYPE dst_register_flag
@@ -476,15 +469,15 @@ module update_register_value(/*{{{*/
   REGISTER_PACK_TYPE next_register;
 
   always_comb begin
-    unique if ((stage == WRITE_REGISTER) & (decode_dst == REG_A )) next_register.a  = dst;
+    unique if ((stage == WRITE_REGISTER) & (instruction.dst == REG_A )) next_register.a  = dst;
     else next_register.a = register.a;
   end
 
   always_comb begin
     if (stage == WRITE_REGISTER) begin
-      if (decode_dst == REG_SP)    next_register.sp = dst;
-      else if (decode_ope == PUSH) next_register.sp = register.sp-`STACK_UNIT;
-      else if (decode_ope == POP)  next_register.sp = register.sp+`STACK_UNIT;
+      if (instruction.dst == REG_SP)    next_register.sp = dst;
+      else if (instruction.ope == PUSH) next_register.sp = register.sp-`STACK_UNIT;
+      else if (instruction.ope == POP)  next_register.sp = register.sp+`STACK_UNIT;
       else next_register.sp = register.sp;
     end else next_register.sp = register.sp;
   end
@@ -510,7 +503,7 @@ module update_ip(/*{{{*/
   input    logic        CLOCK
   , input  logic        RESET
   , input  STAGE_TYPE   stage
-  , input  OPECODE_TYPE decode_ope
+  , input INSTRUCTION_PACK_TYPE instruction
   , input  DEFAULT_TYPE next_ip_operation
   , input  DEFAULT_TYPE next_ip_immediate
   , input  DEFAULT_TYPE jmp
@@ -519,7 +512,7 @@ module update_ip(/*{{{*/
 
   DEFAULT_TYPE next_ip;
   always_comb begin
-    unique if (decode_ope == HLT) next_ip = ip;
+    unique if (instruction.ope == HLT) next_ip = ip;
     else unique case (stage)
       FETCH_OPERATION: next_ip = next_ip_operation;
       FETCH_IMMEDIATE: next_ip = next_ip_immediate;
@@ -560,7 +553,7 @@ module update_memory_write(/*{{{*/
   , output DEFAULT_TYPE addr
 
   , input  STAGE_TYPE   stage
-  , input  OPERAND_TYPE decode_dst
+  , input INSTRUCTION_PACK_TYPE instruction
   , input  DEFAULT_TYPE dst
   , output DEFAULT_TYPE write_bus
   , output STAGE_WRITE_MEMORY_TYPE stage_write_memory
@@ -594,7 +587,7 @@ module update_memory_write(/*{{{*/
 
   always_comb begin
     unique case (stage)
-      WRITE_MEMORY: unique case (decode_dst)
+      WRITE_MEMORY: unique case (instruction.dst)
         ADDRESS_REG_A:  addr = register.a;
         ADDRESS_REG_SP: addr = register.sp;
         ADDRESS_IMM:    addr = imm_dst_addr;
@@ -608,7 +601,7 @@ module update_memory_write(/*{{{*/
   DEFAULT_TYPE next_write_bus;
   always_comb begin
     unique case (stage)
-      WRITE_MEMORY: unique case (decode_dst)
+      WRITE_MEMORY: unique case (instruction.dst)
         REG_A:          next_write_bus = write_bus;
         REG_SP:         next_write_bus = write_bus;
         ADDRESS_REG_A:  next_write_bus = dst;
@@ -720,8 +713,7 @@ module update_stage_fetch_immediate(/*{{{*/
   , input  DEFAULT_TYPE read_bus
   , input  DEFAULT_TYPE ip
   , input  REGISTER_PACK_TYPE register
-  , input  OPERAND_TYPE decode_src
-  , input  OPERAND_TYPE decode_dst
+  , input  INSTRUCTION_PACK_TYPE instruction
   , output STAGE_FETCH_IMMEDIATE_TYPE stage_fetch_immediate
   , output DEFAULT_TYPE next_ip
 
@@ -738,30 +730,30 @@ module update_stage_fetch_immediate(/*{{{*/
     unique case (stage)
       FETCH_IMMEDIATE: unique case (stage_fetch_immediate)
         BGN_FETCH_IMMEDIATE: begin
-          priority if (decode_src == IMM)            next_stage_fetch_immediate = WAIT_IMMEDIATE;
-          else if     (decode_src == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_SRC_ADDR;
-          else if     (decode_src == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_SRC;
-          else if     (decode_src == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_SRC;
-          else if     (decode_dst == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_DST_ADDR;
-          else if     (decode_dst == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_DST;
-          else if     (decode_dst == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_DST;
-          else                                       next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
+          priority if (instruction.src == IMM)            next_stage_fetch_immediate = WAIT_IMMEDIATE;
+          else if     (instruction.src == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_SRC_ADDR;
+          else if     (instruction.src == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_SRC;
+          else if     (instruction.src == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_SRC;
+          else if     (instruction.dst == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_DST_ADDR;
+          else if     (instruction.dst == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_DST;
+          else if     (instruction.dst == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_DST;
+          else                                            next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
         end
 
         LOAD_IMMEDIATE: begin
-          priority if (decode_dst == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_DST_ADDR;
-          else if     (decode_dst == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_DST;
-          else if     (decode_dst == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_DST;
-          else                                       next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
+          priority if (instruction.dst == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_DST_ADDR;
+          else if     (instruction.dst == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_DST;
+          else if     (instruction.dst == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_DST;
+          else                                            next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
         end
 
         LOAD_SRC_ADDR: next_stage_fetch_immediate = WAIT_SRC;
 
         LOAD_SRC: begin
-          priority if (decode_dst == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_DST_ADDR;
-          else if     (decode_dst == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_DST;
-          else if     (decode_dst == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_DST;
-          else                                       next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
+          priority if (instruction.dst == ADDRESS_IMM)    next_stage_fetch_immediate = WAIT_DST_ADDR;
+          else if     (instruction.dst == ADDRESS_REG_A)  next_stage_fetch_immediate = WAIT_DST;
+          else if     (instruction.dst == ADDRESS_REG_SP) next_stage_fetch_immediate = WAIT_DST;
+          else                                            next_stage_fetch_immediate = END_FETCH_IMMEDIATE;
         end
 
         LOAD_DST_ADDR: next_stage_fetch_immediate = WAIT_DST;
@@ -866,13 +858,13 @@ module update_stage_fetch_immediate(/*{{{*/
           WAIT_SRC_ADDR,  LOAD_SRC_ADDR:   addr = ip;
           WAIT_DST_ADDR,  LOAD_DST_ADDR:   addr = ip;
 
-          WAIT_SRC, LOAD_SRC: unique case (decode_src)
+          WAIT_SRC, LOAD_SRC: unique case (instruction.src)
             ADDRESS_REG_A:       addr = register.a;
             ADDRESS_REG_SP:      addr = register.sp;
             ADDRESS_IMM:         addr = imm_src_addr;
           endcase
 
-          WAIT_DST, LOAD_DST: unique case (decode_dst)
+          WAIT_DST, LOAD_DST: unique case (instruction.dst)
             ADDRESS_REG_A:  addr = register.a;
             ADDRESS_REG_SP: addr = register.sp;
             ADDRESS_IMM:    addr = imm_dst_addr;

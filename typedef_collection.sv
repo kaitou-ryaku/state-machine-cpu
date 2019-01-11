@@ -78,4 +78,10 @@ typedef enum logic [1:0] {
 `define FLAG_OVERFLOW  3
 `define FLAG_UNDERFLOW 4
 
+typedef struct packed{
+  OPECODE_TYPE ope;
+  OPERAND_TYPE src;
+  OPERAND_TYPE dst;
+} INSTRUCTION_PACK_TYPE;
+
 `endif
