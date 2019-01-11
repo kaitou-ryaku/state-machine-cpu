@@ -1,10 +1,16 @@
 # 残りタスク
 
-* push, pop
-* bpレジスタ
-* フラグレジスタ
-* sub, cmp
-* 各種jcc
-* call, leave, ret
-* 32bit拡張
-* ModRM
+* DONE push, pop
+* DONE bpレジスタ
+* DONE フラグレジスタ
+* DONE sub, cmp
+* DONE 各種jcc
+
+* todo テストベンチの並列化
+* todo レジスタの構造体化
+* todo アドレスバス、データバス、レジスタの32bit化
+* todo ModRM
+* todo call, leave, ret
+* todo クロック分周逓倍をipでやる
+* todo DFFの書き込みの時間冗長性をなくす
+* todo 実機で動かす
