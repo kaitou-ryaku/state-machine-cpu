@@ -12,6 +12,12 @@
 typedef logic [`REGSIZE-1:0] DEFAULT_TYPE;
 typedef logic [`EXTEND_REGSIZE-1:0] EXTEND_DEFAULT_TYPE;
 
+typedef struct packed{
+  DEFAULT_TYPE a;
+  DEFAULT_TYPE sp;
+  DEFAULT_TYPE flag;
+} REGISTER_PACK_TYPE;
+
 typedef enum logic [2:0] {
   RESET_STAGE
   , FETCH_OPERATION
